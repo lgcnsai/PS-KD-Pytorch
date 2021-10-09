@@ -136,11 +136,13 @@ $ python3 main.py --lr 0.1 \
 ## Citation
 If you find this repository useful, please consider giving a star :star: and citation PS-KD:
 ```
-@inproceedings{kim2021pskd,
-  title={Self-Knowledge Distillation with Progressive Refinement of Targets},
-  author={Kyungyul Kim and ByeongMoon Ji and Doyoung Yoon and Sangheum Hwang},
-  booktitle={Proceedings of the International Conference on Computer Vision (ICCV)},
-  year={2021}
+@InProceedings{Kim_2021_ICCV,
+    author    = {Kim, Kyungyul and Ji, ByeongMoon and Yoon, Doyoung and Hwang, Sangheum},
+    title     = {Self-Knowledge Distillation With Progressive Refinement of Targets},
+    booktitle = {Proceedings of the IEEE/CVF International Conference on Computer Vision (ICCV)},
+    month     = {October},
+    year      = {2021},
+    pages     = {6567-6576}
 }
 ```
 ## Contact for Issues
