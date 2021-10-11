@@ -124,12 +124,11 @@ $ python3 main.py --lr 0.1 \
 | Model +Method                                       | Dataset  | Top-1 Error | Top-5 Error | NLL      | ECE      | AURC      |
 |-----------------------------------------------------|:--------:|:-----------:|:-----------:|:--------:|:--------:|:---------:|
 | DenseNet-264*                                       | ImageNet | 22.15       | 6.12        | --       | --       | --        |
-| ResNeXt-101*                                        | ImageNet | 21.20       | 5.60        | --       | --       | --        |
-| ResNet-152                                          | ImageNet | 21.95       | 6.16        | 0.89     | 5.08     | 61.64     |
-| ResNet-152 + Label Smoothing                        | ImageNet | 21.80       | 6.03        | 0.94     | 3.42     | 70.83     |
-| ResNet-152 + CS-KD [[CVPR'20][cs-kd]]               | ImageNet | 21.67       | 6.01        | 0.88     | 3.79     | 61.39     |
-| ResNet-152 + TF-KD [[CVPR'20][tf-kd]]               | ImageNet | 22.66       | 6.46        | 0.91     | 4.61     | 64.29     |
-| ResNet-152 + **PS-KD**                              | ImageNet | **21.51**   | **5.86**    | **0.84** | **1.85** | **60.61** |
+| ResNet-152                                          | ImageNet | 22.19       | 6.19        | 0.88     | 3.84     | 61.79     |
+| ResNet-152 + Label Smoothing                        | ImageNet | 21.73       | 5.85        | 0.92     | 3.91     | 68.24     |
+| ResNet-152 + CS-KD [[CVPR'20][cs-kd]]               | ImageNet | 21.61       | 5.92        | 0.90     | 5.79     | 62.12     |
+| ResNet-152 + TF-KD [[CVPR'20][tf-kd]]               | ImageNet | 22.76       | 6.43        | 0.91     | 4.70     | 65.28     |
+| ResNet-152 + PS-KD                                  | ImageNet | **21.41**   | **5.86**    | **0.84** | **2.51** | **61.01** |
 
 &#42; denotes results reported in the original papers
 
