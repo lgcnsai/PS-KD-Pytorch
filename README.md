@@ -4,7 +4,7 @@
 # Self-Knowledge Distillation with Progressive Refinement of Targets (PS-KD)
 **Accepted at ICCV 2021, oral presentation**
 * Official PyTorch implementation of **Self-Knowledge Distillation with Progressive Refinement of Targets (PS-KD)**.  
-[[`Slides`](https://drive.google.com/file/d/1B3EVWjvBwoNyEvFEfFW0FkFxTQWRun--/view?usp=sharing)] [[`arXiv`](https://arxiv.org/abs/2006.12000)] [[`Video`](https://drive.google.com/file/d/1QxqSbzn-egdYI13IYn3W4dmIvm_Iw4ku/view?usp=sharing)]
+[[`Slides`](https://drive.google.com/file/d/1B3EVWjvBwoNyEvFEfFW0FkFxTQWRun--/view?usp=sharing)] [[`Paper`](https://openaccess.thecvf.com/content/ICCV2021/html/Kim_Self-Knowledge_Distillation_With_Progressive_Refinement_of_Targets_ICCV_2021_paper.html)] [[`Video`](https://drive.google.com/file/d/1QxqSbzn-egdYI13IYn3W4dmIvm_Iw4ku/view?usp=sharing)]
 * ****Kyungyul Kim, ByeongMoon Ji, Doyoung Yoon and Sangheum Hwang****
 
 ## Abstract
