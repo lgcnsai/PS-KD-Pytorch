@@ -26,29 +26,44 @@ Currently, only **CIFAR-100**, **ImageNet** dataset is supported.
    * (Please refer to the paper for more details)
 
 ## How to Run
-### Single-node & Multi-GPU Training
-To train a single model with 1 nodes & multi-GPU, run the command as follows:
+### Single-GPU Training
+To train a model on single-GPU, run the command as follows:
 ```bash
-$ python3 main.py --lr 0.1 \
+$ CUDA_VISIBLE_DEVICES='<GPU ID>' python3 main.py --lr 0.1 \
                   --lr_decay_schedule 150 225 \
                   --PSKD \
                   --experiments_dir '<set your own path>' \
+                  --batch_size 128 \
+                  --classifier_type 'ResNet18' \
+                  --data_path '<root your own data path>' \
+                  --data_type '<cifar100 or imagenet>' \
+                  --alpha_T 0.8 \
+```
+### Single-node & Multi-GPU Training
+To train a model with 1 nodes & multi-GPU, run the command as follows:
+```bash
+$ CUDA_VISIBLE_DEVICES='<GPU IDs>' python3 main.py --lr 0.1 \
+                  --lr_decay_schedule 150 225 \
+                  --PSKD \
+                  --experiments_dir '<set your own path>' \
+                  --batch_size 128 \
                   --classifier_type 'ResNet18' \
                   --data_path '<root your own data path>' \
                   --data_type '<cifar100 or imagenet>' \
                   --alpha_T 0.8 \
                   --rank 0 \
                   --world_size 1 \
-                  --multiprocessing_distributed True
+                  --multiprocessing_distributed
 ```
 ### Multi-node Training
-To train a single model with 2 nodes, for instance, run the commands below in sequence:
+To train a model with 2 nodes, for instance, run the commands below in sequence:
 ```bash
 # on the node #0
-$ python3 main.py --lr 0.1 \
+$ CUDA_VISIBLE_DEVICES='<GPU IDs>' python3 main.py --lr 0.1 \
                   --lr_decay_schedule 150 225 \
                   --PSKD \
-                  --experiments_dir '<set your own path>' \
+                  --experiments_dir '<set your own path>' \a
+                  --batch_size 64 \
                   --classifier_type 'ResNet18' \
                   --data_path '<root your own data path>' \
                   --data_type '<cifar100 or imagenet>' \
@@ -60,10 +75,11 @@ $ python3 main.py --lr 0.1 \
 ```
 ```bash
 # on the node #1
-$ python3 main.py --lr 0.1 \
+$ CUDA_VISIBLE_DEVICES='<GPU IDs>' python3 main.py --lr 0.1 \
                   --lr_decay_schedule 150 225 \
                   --PSKD \
                   --experiments_dir '<set your own path>' \
+                  --batch_size 64 \
                   --classifier_type 'ResNet18' \
                   --data_path '<root your own data path>' \
                   --data_type '<cifar100 or imagenet>' \

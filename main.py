@@ -52,17 +52,16 @@ import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Progressive Self-Knowledge Distillation : PS-KD')
-    #parser.add_argument('--lr', default=0.1, type=float, help='learning rate')
-    #######
     parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
     parser.add_argument('--lr_decay_rate', default=0.1, type=float, help='learning rate decay rate')
     parser.add_argument('--lr_decay_schedule', default=[150, 225], nargs='*', type=int, help='when to drop lr')
-    #######
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight_decay')
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
     parser.add_argument('--end_epoch', default=300, type=int, help='number of training epoch to run')
     parser.add_argument('--PSKD', action='store_true', help='PSKD')
-    parser.add_argument('--batch_size', type=int, default=128, help='The size of batch')
+    parser.add_argument('--batch_size', type=int, default=128, help='mini-batch size (default: 128), this is the total'
+                                                                    'batch size of all GPUs on the current node when '
+                                                                    'using Data Parallel or Distributed Data Parallel')
     parser.add_argument('--experiments_dir', type=str, default='models',help='Directory name to save the model, log, config')
     parser.add_argument('--classifier_type', type=str, default='ResNet18', help='Select classifier')
     parser.add_argument('--data_path', type=str, default=None, help='download dataset path')
@@ -73,7 +72,7 @@ def parse_args():
     parser.add_argument('--world_size', default=1, type=int,help='number of distributed processes')
     parser.add_argument('--dist_backend', default='nccl', type=str,help='distributed backend')
     parser.add_argument('--dist_url', default='tcp://127.0.0.1:8080', type=str,help='url used to set up distributed training')
-    parser.add_argument('--workers', default=40, type=int,help='url used to set up distributed training')
+    parser.add_argument('--workers', default=40, type=int, help='number of workers for dataloader')
     parser.add_argument('--multiprocessing_distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -100,16 +99,6 @@ def check_args(args):
 
     return args
     
-
-#----------------------------------------------------
-# find free gpu id from multi-gpu server
-#----------------------------------------------------
-def get_freer_gpu():
-    os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
-    memory_available = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
-    return np.argmax(memory_available)  
-
-
 #----------------------------------------------------
 #  Adjust_learning_rate & get_learning_rate  
 #----------------------------------------------------
@@ -128,7 +117,7 @@ def get_learning_rate(optimizer):
     for param_group in optimizer.param_groups:
         lr += [param_group['lr']]
     return lr
-    
+
 
 #----------------------------------------------------
 #  Top-1 / Top -5 accuracy
@@ -168,7 +157,7 @@ def main():
     #-------------------------------------------------------------
     #  Create dir for saving experiments model, log, configuration
     #-------------------------------------------------------------
-    dir_maker = DirectroyMaker(root = args.experiments_dir,save_model=True,save_log=True,save_config=True)
+    dir_maker = DirectroyMaker(root=args.experiments_dir, save_model=True, save_log=True, save_config=True)
     model_log_config_dir = dir_maker.experiments_dir_maker(args)
     
     model_dir = model_log_config_dir[0]
@@ -178,7 +167,7 @@ def main():
     #----------------------------------------------------
     #  Save Configuration to config_dir
     #----------------------------------------------------
-    paser_config_save(args,config_dir)
+    paser_config_save(args, config_dir)
     
     #----------------------------------------------------
     #  Dist setting
@@ -188,29 +177,25 @@ def main():
     
     if args.multiprocessing_distributed:
         args.world_size = ngpus_per_node * args.world_size
-        mp.spawn(main_worker, nprocs=ngpus_per_node,args=(ngpus_per_node,model_dir,log_dir,args))
+        mp.spawn(main_worker, nprocs=ngpus_per_node, args=(ngpus_per_node,model_dir, log_dir, args))
         print(C.green("[!] Multi/Single Node, Multi-GPU All multiprocessing_distributed Training Done."))
-        print(C.underline(C.red2('[Info] Save Model dir:')),C.red2(model_dir))
-        print(C.underline(C.red2('[Info] Log dir:')),C.red2(log_dir))
-        print(C.underline(C.red2('[Info] Config dir:')),C.red2(config_dir))
+        print(C.underline(C.red2('[Info] Save Model dir:')), C.red2(model_dir))
+        print(C.underline(C.red2('[Info] Log dir:')), C.red2(log_dir))
+        print(C.underline(C.red2('[Info] Config dir:')), C.red2(config_dir))
 
         
     else:
-
-        #This is not distributed mode.
-        #if you have multi-gpu instance on your enviromnet, it could auto finding empty just on gpu instance.
-
-        available_gpu = int(get_freer_gpu())
-        print(C.underline(C.yellow("[Info] Finding Empty GPU {}".format(int(get_freer_gpu())))))
-        main_worker(available_gpu, ngpus_per_node, model_dir,log_dir,args)
+        print(C.green("[!] Multi/Single Node, Single-GPU per node, multiprocessing_distributed Training Done."))
+        main_worker(0, ngpus_per_node, model_dir, log_dir, args)
         print(C.green("[!] All Single GPU Training Done"))
-        print(C.underline(C.red2('[Info] Save Model dir:')),C.red2(model_dir))
-        print(C.underline(C.red2('[Info] Log dir:')),C.red2(log_dir))
-        print(C.underline(C.red2('[Info] Config dir:')),C.red2(config_dir))
+        print(C.underline(C.red2('[Info] Save Model dir:')), C.red2(model_dir))
+        print(C.underline(C.red2('[Info] Log dir:')), C.red2(log_dir))
+        print(C.underline(C.red2('[Info] Config dir:')), C.red2(config_dir))
         
 
-def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
+def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     best_acc = 0
+
     
     #----------------------------------------------------
     #  Declare CNN Clasifier#
@@ -230,7 +215,7 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
             # For multiprocessing distributed training, rank needs to be the
             # global rank among all the processes
             args.rank = args.rank * args.ngpus_per_node + gpu
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url,world_size=args.world_size, rank=args.rank)
+        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url, world_size=args.world_size, rank=args.rank)
     print(C.green("[!] [Rank {}] Distributed Init Setting Done.".format(args.rank)))
     
     if not torch.cuda.is_available():
@@ -251,7 +236,6 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
             # ourselves based on the total number of GPUs we have
             args.workers = int((args.workers + args.ngpus_per_node - 1) / args.ngpus_per_node)
             args.batch_size = int(args.batch_size / args.ngpus_per_node)
-            
             print(C.underline(C.yellow("[Info] [Rank {}] Workers: {}".format(args.rank, args.workers))))
             print(C.underline(C.yellow("[Info] [Rank {}] Batch_size: {}".format(args.rank, args.batch_size))))
             
@@ -286,14 +270,14 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
         criterion_CE_pskd = Custom_CrossEntropy_PSKD().cuda(args.gpu) #for progressive self-knowledge distillation, custom cross entropy loss
     else:
         criterion_CE_pskd = None
-    optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay,nesterov=True)
+    optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
     #  Empty matrix for store predictions
     #----------------------------------------------------
     if args.PSKD:
         all_predictions = torch.zeros(len(train_loader.dataset), len(train_loader.dataset.classes), dtype=torch.float32)
-        print(C.underline(C.yellow("[Info] all_predictions matrix shape {} ".format(all_predictions.shape))))
+        print(C.underline(C.yellow("[Info] all_predictions matrix shape {}".format(all_predictions.shape))))
     else:
         all_predictions = None
     
@@ -305,14 +289,16 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
         if args.gpu is None:
             checkpoint = torch.load(args.resume)
         else:
-            # Map model to be loaded to specified single gpu.
-            dist.barrier()
+            if args.distributed:
+                # Map model to be loaded to specified single gpu.
+                dist.barrier()
             loc = 'cuda:{}'.format(args.gpu)
             checkpoint = torch.load(args.resume, map_location=loc)
         
         args.start_epoch = checkpoint['epoch'] + 1 
         alpha_t = checkpoint['alpha_t']
         best_acc = checkpoint['best_acc']
+        all_predictions = checkpoint['prev_predictions'].cpu()
         net.load_state_dict(checkpoint['net'])
         optimizer.load_state_dict(checkpoint['optimizer'])
         print(C.green("[!] [Rank {}] Model loaded".format(args.rank)))
@@ -352,7 +338,8 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
                                 train_loader,
                                 args)
 
-        dist.barrier()
+        if args.distributed:
+            dist.barrier()
         #---------------------------------------------------
         #  Validation
         #---------------------------------------------------
@@ -373,6 +360,7 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
                     'best_acc' : best_acc,
                     'accuracy' : acc,
                     'alpha_t' : alpha_t,
+                    'prev_predictions': all_predictions
                     }
 
         if acc > best_acc:
@@ -386,9 +374,9 @@ def main_worker(gpu,ngpus_per_node,model_dir,log_dir,args):
             if is_main_process():
                 print(C.green("[!] Save checkpoint."))
 
-
-    cleanup()
-    print(C.green("[!] [Rank {}] Distroy Distributed process".format(args.rank)))
+    if args.distributed:
+        cleanup()
+        print(C.green("[!] [Rank {}] Distroy Distributed process".format(args.rank)))
 
 
 
@@ -435,9 +423,7 @@ def train(all_predictions,
 
             # create new soft-targets
             soft_targets = ((1 - alpha_t) * targets_one_hot) + (alpha_t * all_predictions[input_indices])
-            
-            soft_targets = torch.autograd.Variable(soft_targets).cuda()
-            inputs = torch.autograd.Variable(inputs, requires_grad=True)    
+            soft_targets = soft_targets.cuda()
                 
             # student model
             # compute output
@@ -473,17 +459,17 @@ def train(all_predictions,
         correct += predicted.eq(targets).sum().item()
         
         if args.PSKD:
-            if args.multiprocessing_distributed:
+            if args.distributed:
                 for jdx in range(len(gathered_prediction)):
-                    all_predictions[gathered_indices[jdx]] = gathered_prediction[jdx]
-            # need to check
+                    all_predictions[gathered_indices[jdx]] = gathered_prediction[jdx].detach()
             else:
-                all_predictions[input_indices] = softmax_output
+                all_predictions[input_indices] = softmax_output.cpu().detach()
         
-        progress_bar(epoch,batch_idx, len(train_loader),args, 'lr: {:.1e} | alpha_t: {:.3f} | loss: {:.3f} | top1_acc: {:.3f} | top5_acc: {:.3f} | correct/total({}/{})'.format(
+        progress_bar(epoch,batch_idx, len(train_loader), args, 'lr: {:.1e} | alpha_t: {:.3f} | loss: {:.3f} | top1_acc: {:.3f} | top5_acc: {:.3f} | correct/total({}/{})'.format(
             current_LR, alpha_t, train_losses.avg, train_top1.avg, train_top5.avg, correct, total))
-        
-    dist.barrier()
+
+    if args.distributed:
+        dist.barrier()
     
     logger = logging.getLogger('train')
     logger.info('[Rank {}] [Epoch {}] [PSKD {}] [lr {:.1e}] [alpht_t {:.3f}] [train_loss {:.3f}] [train_top1_acc {:.3f}] [train_top5_acc {:.3f}] [correct/total {}/{}]'.format(
@@ -530,7 +516,7 @@ def val(criterion_CE,
                 targets = targets.cuda(args.gpu, non_blocking=True)
                 
             #for ECE, AURC, EAURC
-            targets_numpy = targets.cpu().detach().numpy()
+            targets_numpy = targets.cpu().numpy()
             targets_list.extend(targets_numpy.tolist())
                 
             # model output
@@ -538,7 +524,7 @@ def val(criterion_CE,
             
             # for ECE, AURC, EAURC
             softmax_predictions = F.softmax(outputs, dim=1)
-            softmax_predictions = softmax_predictions.cpu().detach().numpy()
+            softmax_predictions = softmax_predictions.cpu().numpy()
             for values_ in softmax_predictions:
                 confidences.append(values_.tolist())
                 
@@ -561,7 +547,8 @@ def val(criterion_CE,
                         correct,
                         total))
 
-    dist.barrier()
+    if args.distributed:
+        dist.barrier()
             
     if is_main_process():
         ece,aurc,eaurc = metric_ece_aurc_eaurc(confidences,
