@@ -375,7 +375,8 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
                 print(C.green("[!] Save checkpoint."))
 
     if args.distributed:
-        cleanup()
+        dist.barrier()
+        dist.destroy_process_group()
         print(C.green("[!] [Rank {}] Distroy Distributed process".format(args.rank)))
 
 
@@ -570,9 +571,6 @@ def val(criterion_CE,
 
     return val_top1.avg
 
-
-def cleanup():
-    dist.destroy_process_group()
 
 
 if __name__ == '__main__':
