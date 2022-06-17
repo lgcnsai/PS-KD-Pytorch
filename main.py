@@ -104,9 +104,16 @@ def check_args(args):
 #----------------------------------------------------
 def adjust_learning_rate(optimizer, epoch, args):
     lr = args.lr
+    
+    #################
+    #cosine lr schedule
+    t_cur = epoch
+    t_end = args.end_epoch
+    lr = 0.5 * lr * (1.0 + np.cos( np.pi *(t_cur/t_end) ))
+    ##################
 
-    for milestone in args.lr_decay_schedule:
-        lr *= args.lr_decay_rate if epoch >= milestone else 1.
+    #for milestone in args.lr_decay_schedule:
+    #    lr *= args.lr_decay_rate if epoch >= milestone else 1.
         
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
