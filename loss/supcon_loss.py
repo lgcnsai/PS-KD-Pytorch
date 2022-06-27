@@ -24,5 +24,5 @@ class SupConLoss(nn.Module):
         # question is normalize in what way
         print(teacher_output.dtype)
         print(student_output.dtype)
-        loss = self.loss_fn(input=teacher_output, target=student_output)
+        loss = self.loss_fn(input=teacher_output, target=student_output.softmax(dim=1))
         return loss
