@@ -74,8 +74,8 @@ def parse_args():
     parser.add_argument('--dist_backend', default='nccl', type=str,help='distributed backend')
     parser.add_argument('--dist_url', default='tcp://127.0.0.1:8080', type=str,help='url used to set up distributed training')
     parser.add_argument('--workers', default=40, type=int, help='number of workers for dataloader')
-    parser.add_argument('--custom_transform', action='store_false', help='use supervised contrastive augmentation')
-    parser.add_argument('--use_teacher_loss', action='store_false', help='backpropagate through teacher head')
+    parser.add_argument('--custom_transform', action='store_true', help='use supervised contrastive augmentation')
+    parser.add_argument('--use_teacher_loss', action='store_true', help='backpropagate through teacher head')
     parser.add_argument('--use_student_loss', action='store_true', help='backpropagate through student head')
     parser.add_argument('--supervised_contrastive', action='store_true', help='add supervised contrastive loss to teacher output')
     parser.add_argument('--multiprocessing_distributed', action='store_true',
