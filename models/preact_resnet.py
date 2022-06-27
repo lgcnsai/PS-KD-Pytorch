@@ -263,7 +263,7 @@ class CIFAR_ResNet(nn.Module):
         return out
 
 class Custom_Small_Resnet(nn.Module):
-    def __init__(self, block, num_blocks, num_classes=10, bias=True):
+    def __init__(self, block, num_blocks, num_classes=10, num_features=512, bias=True):
         super(Custom_Small_Resnet, self).__init__()
         self.in_planes = 64
         self.conv1 = conv3x3(3, 64)
@@ -272,7 +272,9 @@ class Custom_Small_Resnet(nn.Module):
         self.layer2 = self._make_layer(block, 64, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 128, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 256, num_blocks[3], stride=2)
-        self.linear = nn.Linear(256 * block.expansion, num_classes, bias=bias)
+        self.student = nn.Linear(256 * block.expansion, num_classes, bias=bias)
+        self.teacher_1 = nn.Linear(256 * block.expansion, num_features, bias=bias)
+        self.teacher_2 = nn.Linear(num_features, num_classes)
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1] * (num_blocks - 1)
@@ -293,9 +295,10 @@ class Custom_Small_Resnet(nn.Module):
         out = self.layer4(out3)
         out = F.avg_pool2d(out, 4)
         out4 = out.view(out.size(0), -1)
-        out = self.linear(out4)
+        student_out = self.student(out4)
+        teacher_out = self.teacher_2(self.teacher_1(out4))
 
-        return out
+        return student_out, teacher_out
 
 
 def CIFAR_ResNet18_preActSmall(**kwargs):

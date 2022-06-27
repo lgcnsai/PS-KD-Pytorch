@@ -26,6 +26,7 @@ from models.network import get_network
 #  Datalodader
 #--------------
 from loss.pskd_loss import Custom_CrossEntropy_PSKD
+from loss.supcon_loss import SupConLoss
 
 #--------------
 # Util
@@ -73,8 +74,10 @@ def parse_args():
     parser.add_argument('--dist_backend', default='nccl', type=str,help='distributed backend')
     parser.add_argument('--dist_url', default='tcp://127.0.0.1:8080', type=str,help='url used to set up distributed training')
     parser.add_argument('--workers', default=40, type=int, help='number of workers for dataloader')
-    parser.add_argument('--custom_transform', action="store_false", help='use supervised contrastive augmentation as '
-                                                                         'default')
+    parser.add_argument('--custom_transform', action='store_false', help='use supervised contrastive augmentation')
+    parser.add_argument('--no_teacher_backprop', action='store_true', help='Do not backpropagate through teacher')
+    parser.add_argument('--no_student_backprop', action='store_true', help='Do not backpropagate through student')
+    parser.add_argument('--supervised_contrastive', action='store_true', help='add supervised contrastive loss to teacher output')
     parser.add_argument('--multiprocessing_distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -279,6 +282,10 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         criterion_CE_pskd = Custom_CrossEntropy_PSKD().cuda(args.gpu) #for progressive self-knowledge distillation, custom cross entropy loss
     else:
         criterion_CE_pskd = None
+    if args.supervised_contrastive:
+        criterion_sup_con = SupConLoss().cuda(args.gpu)
+    else:
+        criterion_sup_con = None
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
@@ -340,6 +347,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
                                 all_predictions,
                                 criterion_CE,
                                 criterion_CE_pskd,
+                                criterion_sup_con,
                                 optimizer,
                                 net,
                                 epoch,
@@ -396,6 +404,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
 def train(all_predictions,
           criterion_CE,
           criterion_CE_pskd,
+          criterion_sup_con,
           optimizer,
           net,
           epoch,
@@ -437,9 +446,15 @@ def train(all_predictions,
                 
             # student model
             # compute output
-            outputs = net(inputs)
-            softmax_output = F.softmax(outputs, dim=1) 
-            loss = criterion_CE_pskd(outputs, soft_targets)
+            outputs_student, outputs_teacher = net(inputs)
+            softmax_output = F.softmax(outputs_student, dim=1)
+            loss_student = criterion_CE_pskd(outputs_student, soft_targets)  # loss student head
+            if args.supervised_contrastive:
+                loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)  # loss teacher head
+                loss = loss_student + loss_teacher
+            else:
+                loss = loss_student
+
             
             if args.distributed:
                 gathered_prediction = [torch.ones_like(softmax_output) for _ in range(dist.get_world_size())]
@@ -451,11 +466,11 @@ def train(all_predictions,
                 gathered_indices = torch.cat(gathered_indices, dim=0)
 
         else:
-            outputs = net(inputs)
-            loss = criterion_CE(outputs, targets)
+            outputs_student = net(inputs)
+            loss = criterion_CE(outputs_student, targets)
 
         train_losses.update(loss.item(), inputs.size(0))
-        err1, err5 = accuracy(outputs.data, targets, topk=(1, 5))
+        err1, err5 = accuracy(outputs_student.data, targets, topk=(1, 5))
         train_top1.update(err1.item(), inputs.size(0))
         train_top5.update(err5.item(), inputs.size(0))
 
@@ -464,7 +479,7 @@ def train(all_predictions,
         loss.backward()
         optimizer.step()
 
-        _, predicted = torch.max(outputs, 1)
+        _, predicted = torch.max(outputs_student, 1)
         total += targets.size(0)
         correct += predicted.eq(targets).sum().item()
         
