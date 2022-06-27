@@ -73,6 +73,8 @@ def parse_args():
     parser.add_argument('--dist_backend', default='nccl', type=str,help='distributed backend')
     parser.add_argument('--dist_url', default='tcp://127.0.0.1:8080', type=str,help='url used to set up distributed training')
     parser.add_argument('--workers', default=40, type=int, help='number of workers for dataloader')
+    parser.add_argument('--custom_transform', action="store_false", help='use supervised contrastive augmentation as '
+                                                                         'default')
     parser.add_argument('--multiprocessing_distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '

@@ -75,15 +75,28 @@ def dataloader(args):
         stdv = [0.2023, 0.1994, 0.2010]
         
         print(C.green("[!] [Rank {}] Preparing {} data..".format(args.rank, args.data_type)))
-        
-        transform_train = transforms.Compose([
-                                                                               
-                                              transforms.RandomCrop(32, padding=4),
-                                              transforms.RandomHorizontalFlip(),
-                                              transforms.ToTensor(),
-                                              transforms.Normalize(mean=mean, std=stdv),
-                                             ])
-        
+
+        if args.custom_transform:
+            # copied exactly from https://github.com/HobbitLong/SupContrast/blob/master/main_supcon.py#L146
+            transform_train = transforms.Compose([
+                    transforms.RandomResizedCrop(size=32, scale=(0.2, 1.)),
+                    transforms.RandomHorizontalFlip(),
+                    transforms.RandomApply([
+                        transforms.ColorJitter(0.4, 0.4, 0.4, 0.1)
+                    ], p=0.8),
+                    transforms.RandomGrayscale(p=0.2),
+                    transforms.ToTensor(),
+                    transforms.Normalize(mean=mean, std=stdv),
+                ])
+        else:
+            transform_train = transforms.Compose([
+
+                                                  transforms.RandomCrop(32, padding=4),
+                                                  transforms.RandomHorizontalFlip(),
+                                                  transforms.ToTensor(),
+                                                  transforms.Normalize(mean=mean, std=stdv),
+                                                 ])
+
 
         transform_val = transforms.Compose([
                                                                              
