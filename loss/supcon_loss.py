@@ -9,7 +9,7 @@ class SupConLoss(nn.Module):
         super(SupConLoss, self).__init__()
         self.temperature = temperature
         self.base_temperature = base_temperature
-        self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
+        self.loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
     def forward(self, teacher_output, student_output):
         """Compute loss for model.
