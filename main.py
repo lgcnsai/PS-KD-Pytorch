@@ -75,8 +75,8 @@ def parse_args():
     parser.add_argument('--dist_url', default='tcp://127.0.0.1:8080', type=str,help='url used to set up distributed training')
     parser.add_argument('--workers', default=40, type=int, help='number of workers for dataloader')
     parser.add_argument('--custom_transform', action='store_false', help='use supervised contrastive augmentation')
-    parser.add_argument('--no_teacher_backprop', action='store_true', help='Do not backpropagate through teacher')
-    parser.add_argument('--no_student_backprop', action='store_true', help='Do not backpropagate through student')
+    parser.add_argument('--use_teacher_loss', action='store_false', help='backpropagate through teacher head')
+    parser.add_argument('--use_student_loss', action='store_true', help='backpropagate through student head')
     parser.add_argument('--supervised_contrastive', action='store_true', help='add supervised contrastive loss to teacher output')
     parser.add_argument('--multiprocessing_distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
@@ -450,10 +450,18 @@ def train(all_predictions,
             softmax_output = F.softmax(outputs_student, dim=1)
             if args.supervised_contrastive:
                 soft_targets = ((1 - alpha_t) * targets_one_hot) + (alpha_t * outputs_teacher)
-            loss_student = criterion_CE_pskd(outputs_student, soft_targets)  # loss student head
+            loss_student = criterion_CE_pskd(outputs_student, soft_targets)
             if args.supervised_contrastive:
-                loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)  # loss teacher head
-                loss = loss_student + loss_teacher
+                if args.use_teacher_loss and args.use_student_loss:
+                    loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)
+                    loss = loss_student + loss_teacher
+                elif args.use_student_loss and not args.use_teacher_loss:
+                    loss = loss_student
+                elif not args.use_student_loss and args.use_teacher_loss:
+                    loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)
+                    loss = loss_teacher
+                else:
+                    raise NotImplementedError('Not backpropagating at all cannot be correct')
             else:
                 loss = loss_student
 
