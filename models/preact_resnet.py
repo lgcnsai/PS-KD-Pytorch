@@ -1,7 +1,8 @@
 import torch.nn as nn
 import torch.nn.functional as F
 
-__all__ = ['ResNet', 'CIFAR_ResNet', 'CIFAR_ResNet101_Bottle', 'CIFAR_ResNet18_preActBasic']
+__all__ = ['ResNet', 'CIFAR_ResNet', 'CIFAR_ResNet101_Bottle', 'CIFAR_ResNet18_preActBasic',
+           'CIFAR_ResNet18_preActSmall']
 
 
 def conv3x3(in_planes, out_planes, stride=1, groups=1):
@@ -261,7 +262,44 @@ class CIFAR_ResNet(nn.Module):
 
         return out
 
+class Custom_Small_Resnet(nn.Module):
+    def __init__(self, block, num_blocks, num_classes=10, bias=True):
+        super(Custom_Small_Resnet, self).__init__()
+        self.in_planes = 64
+        self.conv1 = conv3x3(3, 64)
+        self.bn1 = nn.BatchNorm2d(64)
+        self.layer1 = self._make_layer(block, 32, num_blocks[0], stride=1)
+        self.layer2 = self._make_layer(block, 64, num_blocks[1], stride=2)
+        self.layer3 = self._make_layer(block, 128, num_blocks[2], stride=2)
+        self.layer4 = self._make_layer(block, 256, num_blocks[3], stride=2)
+        self.linear = nn.Linear(256 * block.expansion, num_classes, bias=bias)
 
+    def _make_layer(self, block, planes, num_blocks, stride):
+        strides = [stride] + [1] * (num_blocks - 1)
+        layers = []
+        for stride in strides:
+            layers.append(block(self.in_planes, planes, stride))
+            self.in_planes = planes * block.expansion
+        return nn.Sequential(*layers)
+
+    def forward(self, x, lin=0, lout=5):
+        out = x
+        out = self.conv1(out)
+        out = self.bn1(out)
+        out = F.relu(out)
+        out1 = self.layer1(out)
+        out2 = self.layer2(out1)
+        out3 = self.layer3(out2)
+        out = self.layer4(out3)
+        out = F.avg_pool2d(out, 4)
+        out4 = out.view(out.size(0), -1)
+        out = self.linear(out4)
+
+        return out
+
+
+def CIFAR_ResNet18_preActSmall(**kwargs):
+    return Custom_Small_Resnet(PreActBlock, [2,2,2,2], **kwargs)
 
 def CIFAR_ResNet18_preActBasic(**kwargs):
     return CIFAR_ResNet(PreActBlock, [2,2,2,2], **kwargs)

@@ -23,6 +23,8 @@ def get_network(args):
             net = PyramidNet_ShakeDrop(dataset = 'cifar100', depth=200, alpha=240, num_classes=100,bottleneck=True)
         elif args.classifier_type == 'ResNet18':
             net = CIFAR_ResNet18_preActBasic(num_classes=100)
+        elif args.classifier_type == 'SmallResNet':
+            net = CIFAR_ResNet18_preActSmall(num_classes=100)
         elif args.classifier_type == 'ResNet101':
             net = CIFAR_ResNet101_Bottle(num_classes=100)
         elif args.classifier_type == 'DenseNet121':
