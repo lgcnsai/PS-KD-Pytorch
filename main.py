@@ -448,6 +448,8 @@ def train(all_predictions,
             # compute output
             outputs_student, outputs_teacher = net(inputs)
             softmax_output = F.softmax(outputs_student, dim=1)
+            if args.supervised_contrastive:
+                soft_targets = ((1 - alpha_t) * targets_one_hot) + (alpha_t * outputs_teacher)
             loss_student = criterion_CE_pskd(outputs_student, soft_targets)  # loss student head
             if args.supervised_contrastive:
                 loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)  # loss teacher head
