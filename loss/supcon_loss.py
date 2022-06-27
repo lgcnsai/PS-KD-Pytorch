@@ -26,5 +26,5 @@ class SupConLoss(nn.Module):
         print(student_output.shape)
         print(teacher_output.dtype)
         print(student_output.dtype)
-        loss = self.loss_fn(input=teacher_output, target=torch.tensor(student_output.softmax(dim=1), dtype=torch.long)
+        loss = self.loss_fn(input=teacher_output, target=torch.tensor(student_output.softmax(dim=1), dtype=torch.long))
         return loss
