@@ -452,13 +452,10 @@ def train(all_predictions,
                 soft_targets = ((1 - alpha_t) * targets_one_hot.cuda()) + \
                                (alpha_t * F.softmax(outputs_teacher, dim=1).detach()).cuda()
             loss_student = criterion_CE_pskd(outputs_student, soft_targets)
-            print(loss_student)
             if args.supervised_contrastive:
                 if args.use_teacher_loss and args.use_student_loss:
                     loss_teacher = criterion_sup_con(outputs_teacher, outputs_student.detach())
-                    print(loss_teacher)
                     loss = loss_student + loss_teacher
-                    print(loss)
                 elif args.use_student_loss and not args.use_teacher_loss:
                     loss = loss_student
                 elif not args.use_student_loss and args.use_teacher_loss:
@@ -483,7 +480,6 @@ def train(all_predictions,
             outputs_student = net(inputs)
             loss = criterion_CE(outputs_student, targets)
 
-        print(loss)
         train_losses.update(loss.item(), inputs.size(0))
         err1, err5 = accuracy(outputs_student.data, targets, topk=(1, 5))
         train_top1.update(err1.item(), inputs.size(0))
