@@ -9,7 +9,7 @@ class SupConLoss(nn.Module):
         super(SupConLoss, self).__init__()
         self.temperature = temperature
         self.base_temperature = base_temperature
-        self.loss_fn = torch.nn.CrossEntropyLoss().cuda()
+        self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
 
     def forward(self, teacher_output, student_output):
         """Compute loss for model.
@@ -23,5 +23,12 @@ class SupConLoss(nn.Module):
         # todo normalize both the teacher and the student output
         # question is normalize in what way
 
-        loss = self.loss_fn(input=teacher_output, target=student_output.softmax(dim=1))
+        # todo put in temperature into the softmax?
+        # todo kill gradients if teacher and student output are too similar
+
+        loss_per_minibatch_sample = self.loss_fn(input=teacher_output, target=student_output.softmax(dim=1))
+        z = torch.zeros((), device=loss_per_minibatch_sample.device, dtype=loss_per_minibatch_sample.dtype)
+        loss_per_minibatch_sample_killed_gradients = torch.where(loss_per_minibatch_sample < 0.1,
+                                                                 loss_per_minibatch_sample, z)
+        loss = loss_per_minibatch_sample_killed_gradients.mean()
         return loss
