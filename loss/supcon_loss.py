@@ -22,6 +22,6 @@ class SupConLoss(nn.Module):
 
         # todo normalize both the teacher and the student output
         # question is normalize in what way
-        
+
         loss = self.loss_fn(input=teacher_output, target=student_output.softmax(dim=1))
         return loss

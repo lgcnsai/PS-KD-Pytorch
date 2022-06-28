@@ -449,16 +449,16 @@ def train(all_predictions,
             outputs_student, outputs_teacher = net(inputs)
             softmax_output = F.softmax(outputs_student, dim=1)
             if args.supervised_contrastive:
-                soft_targets = ((1 - alpha_t) * targets_one_hot.cuda()) + (alpha_t * outputs_teacher).cuda()
+                soft_targets = ((1 - alpha_t) * targets_one_hot.cuda()) + (alpha_t * outputs_teacher.detach()).cuda()
             loss_student = criterion_CE_pskd(outputs_student, soft_targets)
             if args.supervised_contrastive:
                 if args.use_teacher_loss and args.use_student_loss:
-                    loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)
+                    loss_teacher = criterion_sup_con(outputs_teacher, outputs_student.detach())
                     loss = loss_student + loss_teacher
                 elif args.use_student_loss and not args.use_teacher_loss:
                     loss = loss_student
                 elif not args.use_student_loss and args.use_teacher_loss:
-                    loss_teacher = criterion_sup_con(outputs_student, outputs_teacher)
+                    loss_teacher = criterion_sup_con(outputs_teacher, outputs_student.detach())
                     loss = loss_teacher
                 else:
                     raise NotImplementedError('Not backpropagating at all cannot be correct')
