@@ -555,7 +555,10 @@ def val(criterion_CE,
             targets_list.extend(targets_numpy.tolist())
                 
             # model output
-            outputs = net(inputs)
+            if args.supervised_contrastive:
+                outputs = net(inputs)[0]
+            else:
+                outputs = net(inputs)
             
             # for ECE, AURC, EAURC
             softmax_predictions = F.softmax(outputs, dim=1)
