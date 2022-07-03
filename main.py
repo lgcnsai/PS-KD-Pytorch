@@ -68,6 +68,7 @@ def parse_args():
     parser.add_argument('--data_path', type=str, default=None, help='download dataset path')
     parser.add_argument('--data_type', type=str, default=None, help='type of dataset')
     parser.add_argument('--alpha_T',default=0.8 ,type=float, help='alpha_T')
+    parser.add_argument('--cosine_schedule', action='store_true', help='use cosine annealing learning rate schedule')
     parser.add_argument('--saveckp_freq', default=299, type=int, help='Save checkpoint every x epochs. Last model saving set to 299')
     parser.add_argument('--rank', default=-1, type=int,help='node rank for distributed training')
     parser.add_argument('--world_size', default=1, type=int,help='number of distributed processes')
@@ -111,14 +112,14 @@ def adjust_learning_rate(optimizer, epoch, args):
     lr = args.lr
     
     #################
-    #cosine lr schedule
-    t_cur = epoch
-    t_end = args.end_epoch
-    lr = 0.5 * lr * (1.0 + np.cos( np.pi *(t_cur/t_end) ))
+    if args.cosine_schedule:
+        t_cur = epoch
+        t_end = args.end_epoch
+        lr = 0.5 * lr * (1.0 + np.cos( np.pi *(t_cur/t_end) ))
     ##################
-
-    #for milestone in args.lr_decay_schedule:
-    #    lr *= args.lr_decay_rate if epoch >= milestone else 1.
+    else:
+        for milestone in args.lr_decay_schedule:
+            lr *= args.lr_decay_rate if epoch >= milestone else 1.
         
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
