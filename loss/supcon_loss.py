@@ -22,8 +22,8 @@ class StudentLoss(nn.Module):
         # Student loss: crossentropy (student output (logits -> temperature softmax)
         # compared to dot products of ground truth and teacher prediction
         # (logits -> temperature softmax temperature > 1) (output of last linear teacher layer)
-        student_logits = nn.LogSoftmax(student_output * self.temperature, dim=1)
-        teacher_logits = nn.LogSoftmax(teacher_predictions * self.temperature, dim=1)
+        student_logits = F.log_softmax(student_output * self.temperature, dim=1)
+        teacher_logits = F.log_softmax(teacher_predictions * self.temperature, dim=1)
         # do dot product
         dot_prod = ground_truth * teacher_logits
         # todo kill gradients if teacher and student output are too similar
@@ -40,7 +40,7 @@ class TeacherLoss(nn.Module):
     def forward(self, teacher_predictions, ground_truth):
         # Teacher loss: Crossentropy of ground truth and l2-normalized teacher prediction
         # (output linear layer 3)
-        teacher_logits = nn.LogSoftmax(teacher_predictions * self.temperature, dim=1)
+        teacher_logits = F.log_softmax(teacher_predictions * self.temperature, dim=1)
         loss = self.loss_fn(input=teacher_logits, target=ground_truth)
         return loss
 

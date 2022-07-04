@@ -456,7 +456,7 @@ def train(all_predictions,
             if args.supervised_contrastive:
                 loss_student = criterion_student(outputs_student, targets_one_hot.cuda(), preds_teacher)
             else:
-                loss_student = nn.Softmax(outputs_student, soft_targets)
+                loss_student = F.cross_entropy(outputs_student, soft_targets)
             if args.supervised_contrastive:
                 if args.use_teacher_loss and args.use_student_loss:
                     loss_teacher = criterion_teacher(outputs_teacher, targets_one_hot)
