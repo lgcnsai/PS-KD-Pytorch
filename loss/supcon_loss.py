@@ -33,6 +33,7 @@ class StudentLoss(nn.Module):
 
 class TeacherLoss(nn.Module):
     def __init__(self):
+        super(TeacherLoss, self).__init__()
         self.temperature = 1.
         self.loss_fn = torch.nn.NLLLoss().cuda()
 
