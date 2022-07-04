@@ -8,7 +8,7 @@ class StudentLoss(nn.Module):
         super(StudentLoss, self).__init__()
         self.temperature = temperature
         self.base_temperature = base_temperature
-        self.loss_fn = torch.nn.NLLLoss().cuda()
+        self.loss_fn = torch.nn.Softmax().cuda()
 
     def forward(self, student_output, ground_truth, teacher_predictions):
         """Compute loss for model.
@@ -22,12 +22,10 @@ class StudentLoss(nn.Module):
         # Student loss: crossentropy (student output (logits -> temperature softmax)
         # compared to dot products of ground truth and teacher prediction
         # (logits -> temperature softmax temperature > 1) (output of last linear teacher layer)
-        student_logits = F.log_softmax(student_output * self.temperature, dim=1)
-        teacher_logits = F.log_softmax(teacher_predictions * self.temperature, dim=1)
         # do dot product
-        dot_prod = ground_truth * teacher_logits
+        dot_prod = ground_truth * teacher_predictions
         # todo kill gradients if teacher and student output are too similar
-        loss = self.loss_fn(input=student_logits, target=dot_prod)
+        loss = self.loss_fn(input=student_output * self.temperature, target=dot_prod * self.temperature)
         return loss
 
 
@@ -35,12 +33,11 @@ class TeacherLoss(nn.Module):
     def __init__(self):
         super(TeacherLoss, self).__init__()
         self.temperature = 1.
-        self.loss_fn = torch.nn.NLLLoss().cuda()
+        self.loss_fn = torch.nn.Softmax().cuda()
 
     def forward(self, teacher_predictions, ground_truth):
         # Teacher loss: Crossentropy of ground truth and l2-normalized teacher prediction
         # (output linear layer 3)
-        teacher_logits = F.log_softmax(teacher_predictions * self.temperature, dim=1)
-        loss = self.loss_fn(input=teacher_logits, target=ground_truth)
+        loss = self.loss_fn(input=teacher_predictions * self.temperature, target=ground_truth)
         return loss
 
