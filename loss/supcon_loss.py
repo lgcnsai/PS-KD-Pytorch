@@ -36,8 +36,6 @@ class TeacherLoss(nn.Module):
         self.loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
     def forward(self, teacher_predictions, ground_truth):
-        print(teacher_predictions.shape)
-        print(ground_truth.shape)
         # Teacher loss: Crossentropy of ground truth and l2-normalized teacher prediction
         # (output linear layer 3)
         loss = self.loss_fn(input=teacher_predictions * self.temperature, target=ground_truth)
