@@ -237,7 +237,8 @@ class CIFAR_ResNet(nn.Module):
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
         self.linear = nn.Linear(512*block.expansion, num_classes, bias=bias)
-
+        self.teacher_1 = nn.Linear(512 * block.expansion, 512, bias=bias)
+        self.teacher_2 = nn.Linear(512, 512, bias=bias)  # asymmetric teacher and student heads
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -258,9 +259,10 @@ class CIFAR_ResNet(nn.Module):
         out = self.layer4(out3)
         out = F.avg_pool2d(out, 4)
         out4 = out.view(out.size(0), -1)
-        out = self.linear(out4)
+        student_out = self.linear(out4)
+        teacher_out = self.teacher_2(self.teacher_1(out4))
 
-        return out
+        return student_out, teacher_out
 
 
 def CIFAR_ResNet18_preActSmall(**kwargs):
