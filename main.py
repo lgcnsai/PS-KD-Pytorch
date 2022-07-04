@@ -568,7 +568,7 @@ def val(criterion_CE,
             targets_list.extend(targets_numpy.tolist())
                 
             # model output
-            outputs = net(inputs)[0]
+            outputs = net.student_head(net(inputs))
             
             # for ECE, AURC, EAURC
             softmax_predictions = F.softmax(outputs, dim=1)
