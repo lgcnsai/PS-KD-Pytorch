@@ -289,16 +289,15 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     else:
         criterion_student = None
         criterion_teacher = None
-    optimizer_student_backbone = torch.optim.SGD([net.conv1.parameters(), net.bn1.parameters(), net.layer1.parameters(),
-                                                  net.layer2.parameters(), net.layer3.parameters(),
-                                                  net.layer4.parameters()], lr=args.lr, momentum=0.9,
+    backbone_params = list(net.conv1.parameters()) + list(net.bn1.parameters()) + list(net.layer1.parameters()) + \
+                      list(net.layer2.parameters()) + list(net.layer3.parameters()) + list(net.layer4.parameters())
+    optimizer_student_backbone = torch.optim.SGD(backbone_params, lr=args.lr, momentum=0.9,
                                                  weight_decay=args.weight_decay, nesterov=True)
-    optimizer_teacher_backbone = torch.optim.SGD([net.conv1.parameters(), net.bn1.parameters(), net.layer1.parameters(),
-                                                  net.layer2.parameters(), net.layer3.parameters(),
-                                                  net.layer4.parameters()], lr=args.lr, momentum=0.9,
+    optimizer_teacher_backbone = torch.optim.SGD(backbone_params, lr=args.lr, momentum=0.9,
                                                  weight_decay=args.weight_decay, nesterov=True)
-    optimizer_network_heads = torch.optim.SGD([net.student_head.parameters(), net.teacher_head.parameters(),
-                                               net.learnable_params.parameters()], lr=args.lr, momentum=0.9,
+    head_params = list(net.student_head.parameters()) + list(net.teacher_head.parameters()) + \
+                  list(net.learnable_params.parameters())
+    optimizer_network_heads = torch.optim.SGD(head_params, lr=args.lr, momentum=0.9,
                                               weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
