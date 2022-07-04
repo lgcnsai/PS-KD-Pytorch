@@ -10,7 +10,7 @@ class StudentLoss(nn.Module):
         self.base_temperature = base_temperature
         self.loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
-    def forward(self, student_output, ground_truth, teacher_predictions):
+    def forward(self, student_output, ground_truth, teacher_predictions, lin_comb_alpha):
         """Compute loss for model.
         Args:
             teacher_predictions: vector of shape [bsz, n_classes], already normalized
@@ -23,7 +23,10 @@ class StudentLoss(nn.Module):
         # compared to dot products of ground truth and teacher prediction
         # (logits -> temperature softmax temperature > 1) (output of last linear teacher layer)
         # do dot product
-        dot_prod = ground_truth * teacher_predictions
+        # alternatively, linear combination
+        # dot_prod = ground_truth * teacher_predictions
+        dot_prod = ((1 - lin_comb_alpha) * ground_truth) + (lin_comb_alpha * teacher_predictions).cuda()
+        # pred_similarities = torch.matmul(student_output, torch.t(teacher_predictions))  # shape [bsz, bsz]
         # todo kill gradients if teacher and student output are too similar
         loss = self.loss_fn(input=student_output * self.temperature, target=dot_prod * self.temperature)
         return loss
