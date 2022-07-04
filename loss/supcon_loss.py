@@ -8,7 +8,7 @@ class StudentLoss(nn.Module):
         super(StudentLoss, self).__init__()
         self.temperature = temperature
         self.base_temperature = base_temperature
-        self.loss_fn = torch.nn.Softmax().cuda()
+        self.loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
     def forward(self, student_output, ground_truth, teacher_predictions):
         """Compute loss for model.
@@ -33,7 +33,7 @@ class TeacherLoss(nn.Module):
     def __init__(self):
         super(TeacherLoss, self).__init__()
         self.temperature = 1.
-        self.loss_fn = torch.nn.Softmax().cuda()
+        self.loss_fn = torch.nn.CrossEntropyLoss().cuda()
 
     def forward(self, teacher_predictions, ground_truth):
         # Teacher loss: Crossentropy of ground truth and l2-normalized teacher prediction
