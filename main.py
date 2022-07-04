@@ -289,12 +289,17 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     else:
         criterion_student = None
         criterion_teacher = None
-    optimizer_student_backbone = torch.optim.SGD([net.conv1, net.bn1, net.layer1, net.layer2, net.layer3, net.layer4],
-                                                 lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
-    optimizer_teacher_backbone = torch.optim.SGD([net.conv1, net.bn1, net.layer1, net.layer2, net.layer3, net.layer4],
-                                                 lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
-    optimizer_network_heads = torch.optim.SGD([net.student_head, net.teacher_head, net.learnable_params],
-                                              lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
+    optimizer_student_backbone = torch.optim.SGD([net.conv1.parameters(), net.bn1.parameters(), net.layer1.parameters(),
+                                                  net.layer2.parameters(), net.layer3.parameters(),
+                                                  net.layer4.parameters()], lr=args.lr, momentum=0.9,
+                                                 weight_decay=args.weight_decay, nesterov=True)
+    optimizer_teacher_backbone = torch.optim.SGD([net.conv1.parameters(), net.bn1.parameters(), net.layer1.parameters(),
+                                                  net.layer2.parameters(), net.layer3.parameters(),
+                                                  net.layer4.parameters()], lr=args.lr, momentum=0.9,
+                                                 weight_decay=args.weight_decay, nesterov=True)
+    optimizer_network_heads = torch.optim.SGD([net.student_head.parameters(), net.teacher_head.parameters(),
+                                               net.learnable_params.parameters()], lr=args.lr, momentum=0.9,
+                                              weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
     #  Empty matrix for store predictions
