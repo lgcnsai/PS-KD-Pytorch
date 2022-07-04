@@ -24,8 +24,8 @@ class StudentLoss(nn.Module):
         # (logits -> temperature softmax temperature > 1) (output of last linear teacher layer)
         # do dot product
         # alternatively, linear combination
-        # dot_prod = ground_truth * teacher_predictions
-        dot_prod = ((1 - lin_comb_alpha) * ground_truth) + (lin_comb_alpha * teacher_predictions).cuda()
+        dot_prod = ground_truth * teacher_predictions
+        # dot_prod = ((1 - lin_comb_alpha) * ground_truth) + (lin_comb_alpha * teacher_predictions).cuda()
         # pred_similarities = torch.matmul(student_output, torch.t(teacher_predictions))  # shape [bsz, bsz]
         # todo kill gradients if teacher and student output are too similar
         loss = self.loss_fn(input=student_output * self.temperature, target=dot_prod * self.temperature)
