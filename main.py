@@ -289,7 +289,12 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     else:
         criterion_student = None
         criterion_teacher = None
-    optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
+    optimizer_student_backbone = torch.optim.SGD([net.conv1, net.bn1, net.layer1, net.layer2, net.layer3, net.layer4],
+                                                 lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
+    optimizer_teacher_backbone = torch.optim.SGD([net.conv1, net.bn1, net.layer1, net.layer2, net.layer3, net.layer4],
+                                                 lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
+    optimizer_network_heads = torch.optim.SGD([net.student_head, net.teacher_head, net.learnable_params],
+                                              lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
     #  Empty matrix for store predictions
@@ -319,7 +324,9 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         best_acc = checkpoint['best_acc']
         all_predictions = checkpoint['prev_predictions'].cpu()
         net.load_state_dict(checkpoint['net'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        optimizer_student_backbone.load_state_dict(checkpoint['optimizer_student_backbone'])
+        optimizer_teacher_backbone.load_state_dict(checkpoint['optimizer_teacher_backbone'])
+        optimizer_network_heads.load_state_dict(checkpoint['optimizer_network_heads'])
         print(C.green("[!] [Rank {}] Model loaded".format(args.rank)))
 
         del checkpoint
@@ -331,7 +338,9 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
 
     for epoch in range(args.start_epoch, args.end_epoch):
 
-        adjust_learning_rate(optimizer, epoch, args)
+        adjust_learning_rate(optimizer_student_backbone, epoch, args)
+        adjust_learning_rate(optimizer_teacher_backbone, epoch, args)
+        adjust_learning_rate(optimizer_network_heads, epoch, args)
         if args.distributed:
             train_sampler.set_epoch(epoch)
 
@@ -352,7 +361,9 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
                                 criterion_CE_pskd,
                                 criterion_student,
                                 criterion_teacher,
-                                optimizer,
+                                optimizer_student_backbone,
+                                optimizer_teacher_backbone,
+                                optimizer_network_heads,
                                 net,
                                 epoch,
                                 alpha_t,
@@ -376,7 +387,9 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         #---------------------------------------------------
         save_dict = {
                     'net': net.state_dict(),
-                    'optimizer': optimizer.state_dict(),
+                    'optimizer_student_backbone': optimizer_student_backbone.state_dict(),
+                    'optimizer_teacher_backbone': optimizer_teacher_backbone.state_dict(),
+                    'optimizer_network_heads': optimizer_network_heads.state_dict(),
                     'epoch': epoch,
                     'best_acc' : best_acc,
                     'accuracy' : acc,
@@ -410,7 +423,9 @@ def train(all_predictions,
           criterion_CE_pskd,
           criterion_student,
           criterion_teacher,
-          optimizer,
+          optimizer_student_backbone,
+          optimizer_teacher_backbone,
+          optimizer_network_heads,
           net,
           epoch,
           alpha_t,
@@ -426,7 +441,7 @@ def train(all_predictions,
     total = 0
 
     net.train()
-    current_LR = get_learning_rate(optimizer)[0]
+    current_LR = get_learning_rate(optimizer_student_backbone)[0]
 
     for batch_idx, (inputs, targets, input_indices) in enumerate(train_loader):
         
@@ -451,24 +466,18 @@ def train(all_predictions,
                 
             # student model
             # compute output
-            outputs_student, outputs_teacher, preds_teacher = net(inputs)
+            embedding = net(inputs)
+            outputs_student = net.student_head(embedding)
             softmax_output = F.softmax(outputs_student, dim=1)
             if args.supervised_contrastive:
-                loss_student = criterion_student(outputs_student, targets_one_hot.cuda(), preds_teacher.detach(), alpha_t)
+                preds_teacher = net.learnable_params(F.normalize(net.teacher_head(embedding)))
+                loss_student = criterion_student(net.student_head(embedding), targets_one_hot.cuda(),
+                                                 preds_teacher.detach(),
+                                                 alpha_t)
+                loss_teacher = criterion_teacher(preds_teacher, targets_one_hot.cuda())
+                loss = loss_student + loss_teacher
             else:
-                loss_student = F.cross_entropy(outputs_student, soft_targets)
-            if args.supervised_contrastive:
-                if args.use_teacher_loss and args.use_student_loss:
-                    loss_teacher = criterion_teacher(preds_teacher, targets_one_hot.cuda())
-                    loss = loss_student + loss_teacher
-                elif args.use_student_loss and not args.use_teacher_loss:
-                    loss = loss_student
-                elif not args.use_student_loss and args.use_teacher_loss:
-                    loss_teacher = criterion_teacher(preds_teacher, targets_one_hot.cuda())
-                    loss = loss_teacher
-                else:
-                    raise NotImplementedError('Not backpropagating at all cannot be correct')
-            else:
+                loss_student = F.cross_entropy(net.student_head(embedding), soft_targets)
                 loss = loss_student
 
             
@@ -491,9 +500,18 @@ def train(all_predictions,
         train_top5.update(err5.item(), inputs.size(0))
 
         # compute gradient and do SGD step
-        optimizer.zero_grad()
+        if args.use_student_loss:
+            optimizer_student_backbone.zero_grad()
+            loss_student.backward()
+            optimizer_student_backbone.step()
+        if args.use_teacher_loss:
+            optimizer_teacher_backbone.zero_grad()
+            loss_teacher.backward()
+            optimizer_teacher_backbone.step()
+
+        optimizer_network_heads.zero_grad()
         loss.backward()
-        optimizer.step()
+        optimizer_network_heads.step()
         # after optimizer step, normalize the learnable parameters again
         with torch.no_grad():
             net.learnable_params.weight.div_(torch.norm(net.learnable_params.weight, dim=1, keepdim=True))

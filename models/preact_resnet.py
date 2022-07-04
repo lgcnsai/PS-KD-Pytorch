@@ -237,9 +237,9 @@ class CIFAR_ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, num_blocks[1], stride=2)
         self.layer3 = self._make_layer(block, 256, num_blocks[2], stride=2)
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
-        self.linear = nn.Linear(512*block.expansion, num_classes, bias=bias)
-        self.teacher_1 = nn.Linear(512 * block.expansion, 512, bias=bias)
-        self.teacher_2 = nn.Linear(512, 512, bias=bias)  # asymmetric teacher and student heads
+        self.student_head = nn.Linear(512*block.expansion, num_classes, bias=bias)
+        self.teacher_head = nn.Sequential(nn.Linear(512 * block.expansion, 512, bias=bias),
+                                          nn.Linear(512, 512, bias=bias))  # asymmetric teacher and student heads
         self.learnable_params = nn.Linear(512, num_classes, bias=False)
         with torch.no_grad():
             self.learnable_params.weight.div_(torch.norm(self.learnable_params.weight, dim=1, keepdim=True))
@@ -263,12 +263,7 @@ class CIFAR_ResNet(nn.Module):
         out = self.layer4(out3)
         out = F.avg_pool2d(out, 4)
         out4 = out.view(out.size(0), -1)
-        student_out = self.linear(out4)
-        teacher_out = self.teacher_2(self.teacher_1(out4))
-        F.normalize(teacher_out)
-        teacher_pred = self.learnable_params(teacher_out)
-
-        return student_out, teacher_out, teacher_pred
+        return out4
 
 
 def CIFAR_ResNet18_preActSmall(**kwargs):
