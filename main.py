@@ -26,7 +26,7 @@ from models.network import get_network
 #  Datalodader
 #--------------
 from loss.pskd_loss import Custom_CrossEntropy_PSKD
-from loss.supcon_loss import SupConLoss
+from loss.supcon_loss import StudentLoss
 
 #--------------
 # Util
@@ -284,9 +284,9 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     else:
         criterion_CE_pskd = None
     if args.supervised_contrastive:
-        criterion_sup_con = SupConLoss().cuda(args.gpu)
+        criterion_student = StudentLoss().cuda(args.gpu)
     else:
-        criterion_sup_con = None
+        criterion_student = None
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
@@ -348,7 +348,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
                                 all_predictions,
                                 criterion_CE,
                                 criterion_CE_pskd,
-                                criterion_sup_con,
+                                criterion_student,
                                 optimizer,
                                 net,
                                 epoch,
@@ -405,7 +405,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
 def train(all_predictions,
           criterion_CE,
           criterion_CE_pskd,
-          criterion_sup_con,
+          criterion_student,
           optimizer,
           net,
           epoch,
@@ -450,9 +450,9 @@ def train(all_predictions,
             outputs_student, outputs_teacher, preds_teacher = net(inputs)
             softmax_output = F.softmax(outputs_student, dim=1)
             if args.supervised_contrastive:
-                soft_targets = ((1 - alpha_t) * targets_one_hot.cuda()) + \
-                               (alpha_t * F.softmax(outputs_teacher, dim=1).detach()).cuda()
-            loss_student = criterion_CE_pskd(outputs_student, soft_targets)
+                loss_student = criterion_student(outputs_student, targets_one_hot.cuda(), preds_teacher)
+            else:
+                loss_student = criterion_student(outputs_student, soft_targets)
             if args.supervised_contrastive:
                 if args.use_teacher_loss and args.use_student_loss:
                     loss_teacher = criterion_sup_con(outputs_teacher, outputs_student.detach())
@@ -490,6 +490,9 @@ def train(all_predictions,
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
+        # after optimizer step, normalize the learnable parameters again
+        with torch.no_grad():
+            net.learnable_params.weight.div_(torch.norm(net.learnable_params.weight, dim=1, keepdim=True))
 
         _, predicted = torch.max(outputs_student, 1)
         total += targets.size(0)

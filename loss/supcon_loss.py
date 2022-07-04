@@ -1,34 +1,45 @@
 import torch.nn as nn
 import torch
+import torch.nn.functional as F
 
 
-class SupConLoss(nn.Module):
-    """Supervised Contrastive Learning: https://arxiv.org/pdf/2004.11362.pdf.
-    It also supports the unsupervised contrastive loss in SimCLR"""
+class StudentLoss(nn.Module):
     def __init__(self, temperature=0.07, base_temperature=0.07):
-        super(SupConLoss, self).__init__()
+        super(StudentLoss, self).__init__()
         self.temperature = temperature
         self.base_temperature = base_temperature
-        self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
+        self.loss_fn = torch.nn.NLLLoss().cuda()
 
-    def forward(self, teacher_output, student_output):
+    def forward(self, student_output, ground_truth, teacher_predictions):
         """Compute loss for model.
         Args:
-            teacher_output: vector of shape [bsz, n_classes].
+            teacher_predictions: vector of shape [bsz, n_classes], already normalized
+            ground_truth: array of shape [bsz, n_classes].
             student_output: vector of shape [bsz, n_classes].
         Returns:
             A loss scalar.
         """
-
-        # todo normalize both the teacher and the student output
-        # question is normalize in what way
-
-        # todo put in temperature into the softmax?
+        # Student loss: crossentropy (student output (logits -> temperature softmax)
+        # compared to dot products of ground truth and teacher prediction
+        # (logits -> temperature softmax temperature > 1) (output of last linear teacher layer)
+        student_logits = nn.LogSoftmax(student_output * self.temperature, dim=1)
+        teacher_logits = nn.LogSoftmax(teacher_predictions * self.temperature, dim=1)
+        # do dot product
+        dot_prod = ground_truth * teacher_logits
         # todo kill gradients if teacher and student output are too similar
-
-        loss_per_minibatch_sample = self.loss_fn(input=teacher_output, target=student_output.softmax(dim=1))
-        z = torch.zeros((), device=loss_per_minibatch_sample.device, dtype=loss_per_minibatch_sample.dtype)
-        loss_per_minibatch_sample_killed_gradients = torch.where(loss_per_minibatch_sample < 0.1,
-                                                                 loss_per_minibatch_sample, z)
-        loss = loss_per_minibatch_sample_killed_gradients.mean()
+        loss = self.loss_fn(input=student_logits, target=dot_prod)
         return loss
+
+
+class TeacherLoss(nn.Module):
+    def __init__(self):
+        self.temperature = 1.
+        self.loss_fn = torch.nn.NLLLoss().cuda()
+
+    def forward(self, teacher_predictions, ground_truth):
+        # Teacher loss: Crossentropy of ground truth and l2-normalized teacher prediction
+        # (output linear layer 3)
+        teacher_logits = nn.LogSoftmax(teacher_predictions * self.temperature, dim=1)
+        loss = self.loss_fn(input=teacher_logits, target=ground_truth)
+        return loss
+
