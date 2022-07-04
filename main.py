@@ -447,7 +447,7 @@ def train(all_predictions,
                 
             # student model
             # compute output
-            outputs_student, outputs_teacher = net(inputs)
+            outputs_student, outputs_teacher, preds_teacher = net(inputs)
             softmax_output = F.softmax(outputs_student, dim=1)
             if args.supervised_contrastive:
                 soft_targets = ((1 - alpha_t) * targets_one_hot.cuda()) + \
@@ -557,10 +557,7 @@ def val(criterion_CE,
             targets_list.extend(targets_numpy.tolist())
                 
             # model output
-            if args.supervised_contrastive:
-                outputs = net(inputs)[0]
-            else:
-                outputs = net(inputs)
+            outputs = net(inputs)[0]
             
             # for ECE, AURC, EAURC
             softmax_predictions = F.softmax(outputs, dim=1)

@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -239,6 +240,9 @@ class CIFAR_ResNet(nn.Module):
         self.linear = nn.Linear(512*block.expansion, num_classes, bias=bias)
         self.teacher_1 = nn.Linear(512 * block.expansion, 512, bias=bias)
         self.teacher_2 = nn.Linear(512, 512, bias=bias)  # asymmetric teacher and student heads
+        self.learnable_params = nn.Linear(512, num_classes, bias=False)
+        with torch.no_grad():
+            self.learnable_params.weight.div_(torch.norm(self.learnable_params.weight, dim=1, keepdim=True))
 
     def _make_layer(self, block, planes, num_blocks, stride):
         strides = [stride] + [1]*(num_blocks-1)
@@ -261,8 +265,10 @@ class CIFAR_ResNet(nn.Module):
         out4 = out.view(out.size(0), -1)
         student_out = self.linear(out4)
         teacher_out = self.teacher_2(self.teacher_1(out4))
+        F.normalize(teacher_out)
+        teacher_pred = self.learnable_params(teacher_out)
 
-        return student_out, teacher_out
+        return student_out, teacher_out, teacher_pred
 
 
 def CIFAR_ResNet18_preActSmall(**kwargs):
