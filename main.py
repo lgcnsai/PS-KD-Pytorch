@@ -459,12 +459,12 @@ def train(all_predictions,
                 loss_student = F.cross_entropy(outputs_student, soft_targets)
             if args.supervised_contrastive:
                 if args.use_teacher_loss and args.use_student_loss:
-                    loss_teacher = criterion_teacher(outputs_teacher, targets_one_hot.cuda())
+                    loss_teacher = criterion_teacher(preds_teacher, targets_one_hot.cuda())
                     loss = loss_student + loss_teacher
                 elif args.use_student_loss and not args.use_teacher_loss:
                     loss = loss_student
                 elif not args.use_student_loss and args.use_teacher_loss:
-                    loss_teacher = criterion_teacher(outputs_teacher, targets_one_hot.cuda())
+                    loss_teacher = criterion_teacher(preds_teacher, targets_one_hot.cuda())
                     loss = loss_teacher
                 else:
                     raise NotImplementedError('Not backpropagating at all cannot be correct')
