@@ -26,7 +26,7 @@ from models.network import get_network
 #  Datalodader
 #--------------
 from loss.pskd_loss import Custom_CrossEntropy_PSKD
-from loss.supcon_loss import StudentLoss
+from loss.supcon_loss import StudentLoss, TeacherLoss
 
 #--------------
 # Util
@@ -285,8 +285,10 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         criterion_CE_pskd = None
     if args.supervised_contrastive:
         criterion_student = StudentLoss().cuda(args.gpu)
+        criterion_teacher = TeacherLoss().cuda(args.gpu)
     else:
         criterion_student = None
+        criterion_teacher = None
     optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
 
     #----------------------------------------------------
@@ -349,6 +351,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
                                 criterion_CE,
                                 criterion_CE_pskd,
                                 criterion_student,
+                                criterion_teacher,
                                 optimizer,
                                 net,
                                 epoch,
@@ -406,6 +409,7 @@ def train(all_predictions,
           criterion_CE,
           criterion_CE_pskd,
           criterion_student,
+          criterion_teacher,
           optimizer,
           net,
           epoch,
@@ -452,15 +456,15 @@ def train(all_predictions,
             if args.supervised_contrastive:
                 loss_student = criterion_student(outputs_student, targets_one_hot.cuda(), preds_teacher)
             else:
-                loss_student = criterion_student(outputs_student, soft_targets)
+                loss_student = nn.Softmax(outputs_student, soft_targets)
             if args.supervised_contrastive:
                 if args.use_teacher_loss and args.use_student_loss:
-                    loss_teacher = criterion_sup_con(outputs_teacher, outputs_student.detach())
+                    loss_teacher = criterion_teacher(outputs_teacher, targets_one_hot)
                     loss = loss_student + loss_teacher
                 elif args.use_student_loss and not args.use_teacher_loss:
                     loss = loss_student
                 elif not args.use_student_loss and args.use_teacher_loss:
-                    loss_teacher = criterion_sup_con(outputs_teacher, outputs_student.detach())
+                    loss_teacher = criterion_teacher(outputs_teacher, targets_one_hot)
                     loss = loss_teacher
                 else:
                     raise NotImplementedError('Not backpropagating at all cannot be correct')
