@@ -26,7 +26,7 @@ class StudentLoss(nn.Module):
         # alternatively, linear combination
         # dot_prod = ground_truth * teacher_predictions
         dot_prod = ((1 - lin_comb_alpha) * ground_truth) + (lin_comb_alpha * F.softmax(teacher_predictions *
-                                                                                       self.temperature)).cuda()
+                                                                                       self.temperature, dim=1)).cuda()
         # pred_similarities = torch.matmul(student_output, torch.t(teacher_predictions))  # shape [bsz, bsz]
         # todo kill gradients if teacher and student output are too similar
         loss = self.loss_fn(input=student_output * self.temperature, target=dot_prod)
