@@ -457,20 +457,21 @@ def train(all_predictions,
             embedding = net(inputs)
             outputs_student = net.student_head(embedding)
             softmax_output = F.softmax(outputs_student, dim=1)
+            detached_embedding = embedding.clone().detach()
             if args.supervised_contrastive:
                 if args.use_student_loss:
                     loss_student = criterion_student(net.student_head(embedding), targets_one_hot.cuda(),
-                                                     net.learnable_params(F.normalize(net.teacher_head(embedding.detach()))),
+                                                     net.learnable_params(F.normalize(net.teacher_head(detached_embedding))),
                                                      alpha_t)
                 else:
-                    loss_student = criterion_student(net.student_head(embedding.detach()), targets_one_hot.cuda(),
-                                                     net.learnable_params(F.normalize(net.teacher_head(embedding.detach()))),
+                    loss_student = criterion_student(net.student_head(detached_embedding), targets_one_hot.cuda(),
+                                                     net.learnable_params(F.normalize(net.teacher_head(detached_embedding))),
                                                      alpha_t)
                 if args.use_teacher_loss:
                     loss_teacher = criterion_teacher(net.learnable_params(F.normalize(net.teacher_head(embedding))),
                                                      targets_one_hot.cuda())
                 else:
-                    loss_teacher = criterion_teacher(net.learnable_params(F.normalize(net.teacher_head(embedding.detach()))),
+                    loss_teacher = criterion_teacher(net.learnable_params(F.normalize(net.teacher_head(detached_embedding))),
                                                      targets_one_hot.cuda())
                 loss = loss_student + loss_teacher
             else:
