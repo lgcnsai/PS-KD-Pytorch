@@ -4,7 +4,7 @@ import torch.nn.functional as F
 
 
 class StudentLoss(nn.Module):
-    def __init__(self, temperature=0.07, base_temperature=0.07):
+    def __init__(self, temperature=1, base_temperature=1):
         super(StudentLoss, self).__init__()
         self.temperature = temperature
         self.base_temperature = base_temperature
