@@ -79,6 +79,8 @@ def parse_args():
     parser.add_argument('--use_teacher_loss', action='store_true', help='backpropagate through teacher head')
     parser.add_argument('--use_student_loss', action='store_true', help='backpropagate through student head')
     parser.add_argument('--supervised_contrastive', action='store_true', help='add supervised contrastive loss to teacher output')
+    parser.add_argument('--kill_similar_gradients', action='store_true',
+                        help='kill gradients in teacher loss if the predictions are too similar and/or too dissimilar')
     parser.add_argument('--multiprocessing_distributed', action='store_true',
                     help='Use multi-processing distributed training to launch '
                          'N processes per node, which has N GPUs. This is the '
@@ -285,7 +287,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         criterion_CE_pskd = None
     if args.supervised_contrastive:
         criterion_student = StudentLoss().cuda(args.gpu)
-        criterion_teacher = TeacherLoss().cuda(args.gpu)
+        criterion_teacher = TeacherLoss(args.kill_similar_gradients).cuda(args.gpu)
     else:
         criterion_student = None
         criterion_teacher = None
