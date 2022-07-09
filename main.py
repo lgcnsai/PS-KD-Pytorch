@@ -70,7 +70,9 @@ def parse_args():
     parser.add_argument('--custom_transform', action='store_true', help='use supervised contrastive augmentation')
     parser.add_argument('--use_teacher_loss', action='store_true', help='backpropagate through teacher head')
     parser.add_argument('--use_student_loss', action='store_true', help='backpropagate through student head')
-    parser.add_argument('--supervised_contrastive', action='store_true', help='add supervised contrastive loss to teacher output')
+    parser.add_argument('--temperature', default=1.0, type=float, help='temperature')
+    
+    #parser.add_argument('--supervised_contrastive', action='store_true', help='add supervised contrastive loss to teacher output')
     parser.add_argument('--kill_similar_gradients', action='store_true',
                         help='kill gradients in teacher loss if the predictions are too similar and/or too dissimilar')
     parser.add_argument('--resume', type=str, default=None, help='load model path')
@@ -178,7 +180,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     best_acc = 0
     net = get_network(args)
     args.gpu = gpu    
-    torch.cuda.set_device(args.gpu)
+    #torch.cuda.set_device(args.gpu)
     net = net.cuda(args.gpu)
         
     set_logging_defaults(log_dir, args)
@@ -194,8 +196,8 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     
     #if args.supervised_contrastive:
     criterion_CE = nn.CrossEntropyLoss().cuda(args.gpu)
-    criterion_student = StudentLoss().cuda(args.gpu)
-    criterion_teacher = TeacherLoss(args.kill_similar_gradients).cuda(args.gpu)
+    criterion_student = StudentLoss(temperature=args.temperature).cuda(args.gpu)
+    criterion_teacher = TeacherLoss(temperature=args.temperature, kill_gradients=args.kill_similar_gradients).cuda(args.gpu)
     #else:
     #    criterion_student = None
     #    criterion_teacher = None
@@ -292,9 +294,8 @@ def train(all_predictions,
 
     for batch_idx, (inputs, targets, input_indices) in enumerate(train_loader):
         
-        if args.gpu is not None:
-            inputs = inputs.cuda(non_blocking=True)
-            targets = targets.cuda(non_blocking=True)
+        inputs = inputs.cuda(args.gpu, non_blocking=True)
+        targets = targets.cuda(args.gpu, non_blocking=True)
             
         #-----------------------------------
         # Self-KD or none
@@ -326,7 +327,7 @@ def train(all_predictions,
         loss_student = criterion_student(student_logits, targets_one_hot.cuda(),
                                         teacher_logits.clone().detach(), alpha_t)
         
-        loss_teacher = criterion_teacher(teacher_logits, targets_one_hot.cuda())
+        loss_teacher = criterion_teacher(teacher_logits, targets)
 
         loss = loss_student + loss_teacher
 
@@ -386,9 +387,8 @@ def val(criterion_CE,
     with torch.no_grad():
         for batch_idx, (inputs, targets, _) in enumerate(val_loader):              
             
-            if args.gpu is not None:
-                inputs = inputs.cuda(args.gpu, non_blocking=True)
-                targets = targets.cuda(args.gpu, non_blocking=True)
+            inputs = inputs.cuda(args.gpu, non_blocking=True)
+            targets = targets.cuda(args.gpu, non_blocking=True)
                 
             #for ECE, AURC, EAURC
             targets_numpy = targets.cpu().numpy()

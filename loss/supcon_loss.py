@@ -30,30 +30,29 @@ class StudentLoss(nn.Module):
 
 
 class TeacherLoss(nn.Module):
-    def __init__(self, kill_gradients=False):
+    def __init__(self, temperature=1.0, kill_gradients=False):
         super(TeacherLoss, self).__init__()
-        self.temperature = 1.0
+        self.temperature = temperature
         self.kill_gradients = kill_gradients
-        self.low_threshold = -0.9
-        self.large_threshold = 0.9
+        self.sim_threshold = 0.9
         self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
 
-    def forward(self, teacher_predictions, ground_truth):
-        # Teacher loss: Crossentropy of ground truth and l2-normalized teacher prediction
-        # (output linear layer 3)
+    def forward(self, teacher_logits, ground_truth):
+        # Teacher_logits: [batch, n_classes]
+        # ground_truth: [batch,] , not one hot labels
         # todo kill gradients if teacher output and learnable params are too similar
-        # set teacher predictions according to thresholds
-        loss_per_minibatch_sample = self.loss_fn(input=teacher_predictions * self.temperature,
-                                                 target=ground_truth)
+        loss = self.loss_fn(input = teacher_logits * self.temperature, target=ground_truth)
+        
         if self.kill_gradients:
-            low_threshold_setter = torch.ones((), device=loss_per_minibatch_sample.device,
-                                              dtype=loss_per_minibatch_sample.dtype) * -1
-            large_threshold_setter = torch.ones((), device=loss_per_minibatch_sample.device,
-                                                dtype=loss_per_minibatch_sample.dtype) * self.large_threshold
-            loss_per_minibatch_sample = torch.where(loss_per_minibatch_sample < self.low_threshold,
-                                                    low_threshold_setter, loss_per_minibatch_sample)
-            loss_per_minibatch_sample = torch.where(loss_per_minibatch_sample > self.large_threshold,
-                                                    large_threshold_setter, loss_per_minibatch_sample)
-        loss = loss_per_minibatch_sample.mean()
+            batch_size, n_classes = teacher_logits.shape
+            indices = torch.arange(batch_size).cuda()
+            gt_logits = teacher_logits[indices, ground_truth]
+            sim_mask = (gt_logits > self.sim_threshold).detach()
+            mask = torch.ones(batch_size, ).cuda()
+            mask[sim_mask] = 0
+            loss = mask * loss
+        
+        loss = torch.mean(loss)
+
         return loss
 
