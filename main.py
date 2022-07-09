@@ -193,6 +193,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     #----------------------------------------------------
     
     #if args.supervised_contrastive:
+    criterion_CE = nn.CrossEntropyLoss().cuda(args.gpu)
     criterion_student = StudentLoss().cuda(args.gpu)
     criterion_teacher = TeacherLoss(args.kill_similar_gradients).cuda(args.gpu)
     #else:
@@ -227,7 +228,6 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     #  PS-KD train & validation
     #----------------------------------------------------
     cudnn.benchmark = True
-
     for epoch in range(args.start_epoch, args.end_epoch):
 
         adjust_learning_rate(optimizer, epoch, args)
@@ -235,7 +235,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         alpha_t = args.alpha_T * ((epoch + 1) / args.end_epoch)
         alpha_t = max(0, alpha_t)
 
-        train(all_predictions, criterion_CE, criterion_CE_pskd, criterion_student,
+        train(None, None, None, criterion_student,
               criterion_teacher,optimizer, net, epoch, alpha_t, train_loader, args)
 
         #---------------------------------------------------
