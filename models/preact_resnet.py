@@ -239,6 +239,7 @@ class CIFAR_ResNet(nn.Module):
         self.layer4 = self._make_layer(block, 512, num_blocks[3], stride=2)
         self.student_head = nn.Linear(512*block.expansion, num_classes, bias=bias)
         self.teacher_head = nn.Sequential(nn.Linear(512 * block.expansion, 512, bias=bias),
+                                          nn.ReLU(), #add a non-linearity between teacher_head layers
                                           nn.Linear(512, 512, bias=bias))  # asymmetric teacher and student heads
         self.learnable_params = nn.Linear(512, num_classes, bias=False)
         with torch.no_grad():

@@ -32,7 +32,7 @@ def dataloader(args):
         mean= [x / 255.0 for x in [125.3, 123.0, 113.9]]
         stdv = [x / 255.0 for x in [63.0, 62.1, 66.7]]
         
-        print(C.green("[!] [Rank {}] Preparing {} data..".format(args.rank, args.data_type)))
+        #print(C.green("[!] [Rank {}] Preparing {} data..".format(args.rank, args.data_type)))
         transform_train = transforms.Compose([
                                                                                
                                               transforms.RandomCrop(32, padding=4),
@@ -50,12 +50,12 @@ def dataloader(args):
         trainset = custom_datasets.Custom_CIFAR10(root=args.data_path, train=True, download=True, transform=transform_train)
         validset = custom_datasets.Custom_CIFAR10(root=args.data_path, train=False, download=True, transform=transform_val)
         
-        if args.multiprocessing_distributed:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(trainset)
-            print(C.green("[!] [Rank {}] Distributed Sampler Data Loading Done".format(args.rank)))
-        else:
-            train_sampler = None
-            print(C.green("[!] [Rank {}] Data Loading Done".format(args.rank)))
+        #if args.multiprocessing_distributed:
+        #    train_sampler = torch.utils.data.distributed.DistributedSampler(trainset)
+        #    print(C.green("[!] [Rank {}] Distributed Sampler Data Loading Done".format(args.rank)))
+        #else:
+        #    train_sampler = None
+        #    print(C.green("[!] [Rank {}] Data Loading Done".format(args.rank)))
         
         train_loader = torch.utils.data.DataLoader(trainset, pin_memory=True,
                                                    batch_size=args.batch_size,
@@ -74,7 +74,7 @@ def dataloader(args):
         mean = [0.4914, 0.4822, 0.4465]                                 
         stdv = [0.2023, 0.1994, 0.2010]
         
-        print(C.green("[!] [Rank {}] Preparing {} data..".format(args.rank, args.data_type)))
+        print(C.green("[!] Preparing {} data..".format(args.data_type)))
 
         if args.custom_transform:
             # copied exactly from https://github.com/HobbitLong/SupContrast/blob/master/main_supcon.py#L146
@@ -107,12 +107,7 @@ def dataloader(args):
         trainset = custom_datasets.Custom_CIFAR100(root=args.data_path, train=True, download=True, transform=transform_train)
         validset = custom_datasets.Custom_CIFAR100(root=args.data_path, train=False, download=True, transform=transform_val)
         
-        if args.multiprocessing_distributed:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(trainset)
-            print(C.green("[!] [Rank {}] Distributed Sampler Data Loading Done".format(args.rank)))
-        else:
-            train_sampler = None
-            print(C.green("[!] [Rank {}] Data Loading Done".format(args.rank)))
+        train_sampler = None
         
 
         train_loader = torch.utils.data.DataLoader(trainset, pin_memory=True, 
@@ -129,7 +124,7 @@ def dataloader(args):
     elif args.data_type == 'imagenet':
         mean=[0.485, 0.456, 0.406]
         stdv=[0.229, 0.224, 0.225]
-        print(C.green("[!] [Rank {}] Preparing {} data..".format(args.rank, args.data_type)))
+        #print(C.green("[!] [Rank {}] Preparing {} data..".format(args.rank, args.data_type)))
         jittering = custom_transform.ColorJitter(brightness=0.4, contrast=0.4, saturation=0.4)
         lighting = custom_transform.Lighting(alphastd=0.1,
                                              eigval=[0.2175, 0.0188, 0.0045],
@@ -156,12 +151,12 @@ def dataloader(args):
         trainset = custom_datasets.Custom_ImageFolder(os.path.join(args.data_path,'train'), transform=transform_train)
         validset = custom_datasets.Custom_ImageFolder(os.path.join(args.data_path,'val'), transform=transform_val)
         
-        if args.multiprocessing_distributed:
-            train_sampler = torch.utils.data.distributed.DistributedSampler(trainset)
-            print(C.green("[!] [Rank {}] Distributed Sampler Data Loading Done".format(args.rank)))
-        else:
-            train_sampler = None
-            print(C.green("[!] [Rank {}] Data Loading Done".format(args.rank)))
+        #if args.multiprocessing_distributed:
+        #    train_sampler = torch.utils.data.distributed.DistributedSampler(trainset)
+        #    print(C.green("[!] [Rank {}] Distributed Sampler Data Loading Done".format(args.rank)))
+        #else:
+        train_sampler = None
+        #print(C.green("[!] [Rank {}] Data Loading Done".format(args.rank)))
         
         train_loader = torch.utils.data.DataLoader(trainset,
                                                    pin_memory=True,
