@@ -34,14 +34,17 @@ class TeacherLoss(nn.Module):
         super(TeacherLoss, self).__init__()
         self.temperature = temperature
         self.kill_gradients = kill_gradients
-        self.sim_threshold = 0.9
-        self.dis_sim_threshold = -0.9
+        self.sim_threshold = 0.9  # 0.8 to 0.9, we can also grid-search here
+        self.dis_sim_threshold = -0.9  # don't set negative threshold to -0.9, set it larger
+        # "the cosine should have a positive value like 0.3 or something like that" somewhere between 0.3 and 0.1
+        #  -> grid-search
         self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
 
     def forward(self, teacher_logits, ground_truth):
         # Teacher_logits: [batch, n_classes]
         # ground_truth: [batch,] , not one hot labels
-        # todo: set logits according to threshold values
+        # todo: set logits according to threshold values  (only set it to the large threshold if it is the ground truth)
+        # and only set it to the negative threshold if the prediction was incorrect
         if self.kill_gradients:
             dis_sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * -1
             sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * self.sim_threshold

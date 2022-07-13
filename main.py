@@ -98,6 +98,8 @@ def check_args(args):
 #  Adjust_learning_rate & get_learning_rate  
 #----------------------------------------------------
 def adjust_learning_rate(optimizer, epoch, args):
+    # add a warm-up period for maybe 10 epochs where we linearly increase the learning rate until we are at the
+    # cosine annealing starting point
     if epoch == 0:
         mult_factor = 1.
     else:
@@ -229,7 +231,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         {'params': net.layer3.parameters()},
         {'params': net.layer4.parameters()},
         {'params': net.student_head.parameters()},
-        {'params': net.teacher_head.parameters(), 'lr': 0.2, 'weight_decay': 1e-6},
+        {'params': net.teacher_head.parameters(), 'lr': 0.2, 'weight_decay': 1e-6},  # for 256, set it to 0.2 to 0.25
         {'params': net.learnable_params.parameters(), 'lr': 0.2, 'weight_decay': 1e-6}
     ],
         lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
