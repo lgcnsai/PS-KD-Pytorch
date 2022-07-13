@@ -35,22 +35,31 @@ class TeacherLoss(nn.Module):
         self.temperature = temperature
         self.kill_gradients = kill_gradients
         self.sim_threshold = 0.9
+        self.dis_sim_threshold = -0.9
         self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
 
     def forward(self, teacher_logits, ground_truth):
         # Teacher_logits: [batch, n_classes]
         # ground_truth: [batch,] , not one hot labels
-        # todo kill gradients if teacher output and learnable params are too similar
-        loss = self.loss_fn(input = teacher_logits * self.temperature, target=ground_truth)
-        
+        # todo: set logits according to threshold values
         if self.kill_gradients:
-            batch_size, n_classes = teacher_logits.shape
-            indices = torch.arange(batch_size).cuda()
-            gt_logits = teacher_logits[indices, ground_truth]
-            sim_mask = (gt_logits > self.sim_threshold).detach()
-            mask = torch.ones(batch_size, ).cuda()
-            mask[sim_mask] = 0
-            loss = mask * loss
+            dis_sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * -1
+            sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * self.sim_threshold
+            # set large similarities to the threshold
+            teacher_logits = torch.where(teacher_logits > self.sim_threshold, sim_setter, teacher_logits)
+            # set small similarities to -1
+            teacher_logits = torch.where(teacher_logits < self.dis_sim_threshold, dis_sim_setter, teacher_logits)
+
+        loss = self.loss_fn(input=teacher_logits * self.temperature, target=ground_truth)
+        
+        #if self.kill_gradients:
+        #    batch_size, n_classes = teacher_logits.shape
+        #    indices = torch.arange(batch_size).cuda()
+        #    gt_logits = teacher_logits[indices, ground_truth]
+        #    sim_mask = (gt_logits > self.sim_threshold).detach()
+        #    mask = torch.ones(batch_size, ).cuda()
+        #    mask[sim_mask] = 0
+        #    loss = mask * loss
         
         loss = torch.mean(loss)
 
