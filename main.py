@@ -98,13 +98,12 @@ def check_args(args):
 #  Adjust_learning_rate & get_learning_rate  
 #----------------------------------------------------
 def adjust_learning_rate(optimizer, epoch, args):
-    """
     if epoch == 0:
         mult_factor = 1.
     else:
         if args.cosine_schedule:
             # calculate the factor from previous epoch
-            factor_previous = 0.5 * (1.0 + np.cos(np.pi * (epoch - 1/args.end_epoch)))
+            factor_previous = 0.5 * (1.0 + np.cos(np.pi * ((epoch - 1)/args.end_epoch)))
             factor_now = 0.5 * (1.0 + np.cos(np.pi * (epoch/args.end_epoch)))
             mult_factor = factor_now/factor_previous
         else:
@@ -116,7 +115,7 @@ def adjust_learning_rate(optimizer, epoch, args):
 
     for param_group in optimizer.param_groups:
         param_group['lr'] *= mult_factor
-        """
+    """
     lr = args.lr
 
     if args.cosine_schedule:
@@ -129,6 +128,7 @@ def adjust_learning_rate(optimizer, epoch, args):
 
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+    """
 
         
 def get_learning_rate(optimizer):
@@ -221,20 +221,20 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     #    criterion_student = None
     #    criterion_teacher = None
     # use vicreg hyperparameters for the teacher head
-    #optimizer = torch.optim.SGD([
-    #    {'params': net.conv1.parameters()},
-    #    {'params': net.bn1.parameters()},  # not sure if this needs to be included to let gradients flow through
-    #    {'params': net.layer1.parameters()},
-    #    {'params': net.layer2.parameters()},
-    #    {'params': net.layer3.parameters()},
-    #    {'params': net.layer4.parameters()},
-    #    {'params': net.student_head.parameters()},
-    #    {'params': net.teacher_head.parameters(), 'lr': 0.2, 'weight_decay': 1e-6},
-    #    {'params': net.learnable_params.parameters(), 'lr': 0.2, 'weight_decay': 1e-6}
-    #],
-    #    lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
-    optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay,
-                                nesterov=True)
+    optimizer = torch.optim.SGD([
+        {'params': net.conv1.parameters()},
+        {'params': net.bn1.parameters()},  # not sure if this needs to be included to let gradients flow through
+        {'params': net.layer1.parameters()},
+        {'params': net.layer2.parameters()},
+        {'params': net.layer3.parameters()},
+        {'params': net.layer4.parameters()},
+        {'params': net.student_head.parameters()},
+        {'params': net.teacher_head.parameters(), 'lr': 0.2, 'weight_decay': 1e-6},
+        {'params': net.learnable_params.parameters(), 'lr': 0.2, 'weight_decay': 1e-6}
+    ],
+        lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
+    #optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay,
+    #                            nesterov=True)
 
     #----------------------------------------------------
     #  load status & Resume Learning
