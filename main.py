@@ -50,13 +50,13 @@ import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Online self-KD with soft labels')
-    parser.add_argument('--lr', default=0.1, type=float, help='initial learning rate')
+    parser.add_argument('--lr', default=0.2, type=float, help='initial learning rate')
     parser.add_argument('--lr_decay_rate', default=0.1, type=float, help='learning rate decay rate')
     parser.add_argument('--lr_decay_schedule', default=[150, 225], nargs='*', type=int, help='when to drop lr')
     parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight_decay')
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
     parser.add_argument('--end_epoch', default=300, type=int, help='number of training epoch to run')
-    parser.add_argument('--batch_size', type=int, default=128, help='mini-batch size (default: 128), this is the total'
+    parser.add_argument('--batch_size', type=int, default=256, help='mini-batch size (default: 128), this is the total'
                                                                     'batch size of all GPUs on the current node when '
                                                                     'using Data Parallel or Distributed Data Parallel')
     parser.add_argument('--experiments_dir', type=str, default='models',help='Directory name to save the model, log, config')
@@ -100,20 +100,21 @@ def check_args(args):
 def adjust_learning_rate(optimizer, epoch, args):
     # add a warm-up period for maybe 10 epochs where we linearly increase the learning rate until we are at the
     # cosine annealing starting point
-    if epoch == 0:
-        mult_factor = 1.
+    # we will linearly increase from 0.002 to 0.2
+    if args.cosine_schedule:
+        if epoch == 0:
+
+        # in the first 10 epichs, we have a linear increase to the starting learning rate
+        # calculate the factor from previous epoch
+        factor_previous = 0.5 * (1.0 + np.cos(np.pi * ((epoch - 1)/args.end_epoch)))
+        factor_now = 0.5 * (1.0 + np.cos(np.pi * (epoch/args.end_epoch)))
+        mult_factor = factor_now/factor_previous
     else:
-        if args.cosine_schedule:
-            # calculate the factor from previous epoch
-            factor_previous = 0.5 * (1.0 + np.cos(np.pi * ((epoch - 1)/args.end_epoch)))
-            factor_now = 0.5 * (1.0 + np.cos(np.pi * (epoch/args.end_epoch)))
-            mult_factor = factor_now/factor_previous
-        else:
-            mult_factor = 1.
-            for milestone in args.lr_decay_schedule:
-                if epoch == milestone:
-                    mult_factor = args.lr_decay_rate
-                    break
+        mult_factor = 1.
+        for milestone in args.lr_decay_schedule:
+            if epoch == milestone:
+                mult_factor = args.lr_decay_rate
+                break
 
     for param_group in optimizer.param_groups:
         param_group['lr'] *= mult_factor
@@ -231,8 +232,8 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         {'params': net.layer3.parameters()},
         {'params': net.layer4.parameters()},
         {'params': net.student_head.parameters()},
-        {'params': net.teacher_head.parameters(), 'lr': 0.2, 'weight_decay': 1e-6},  # for 256, set it to 0.2 to 0.25
-        {'params': net.learnable_params.parameters(), 'lr': 0.2, 'weight_decay': 1e-6}
+        {'params': net.teacher_head.parameters(), 'weight_decay': 1e-6},  # for 256, set it to 0.2 to 0.25
+        {'params': net.learnable_params.parameters(), 'weight_decay': 1e-6}
     ],
         lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
     #optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay,
