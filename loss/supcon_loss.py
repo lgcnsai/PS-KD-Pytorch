@@ -35,7 +35,7 @@ class TeacherLoss(nn.Module):
         self.temperature = temperature
         self.kill_gradients = kill_gradients
         self.sim_threshold = 0.9  # 0.8 to 0.9, we can also grid-search here
-        self.dis_sim_threshold = -0.9  # don't set negative threshold to -0.9, set it larger
+        self.dis_sim_threshold = 0.2  # don't set negative threshold to -0.9, set it larger
         # "the cosine should have a positive value like 0.3 or something like that" somewhere between 0.3 and 0.1
         #  -> grid-search
         self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()
@@ -43,15 +43,18 @@ class TeacherLoss(nn.Module):
     def forward(self, teacher_logits, ground_truth):
         # Teacher_logits: [batch, n_classes]
         # ground_truth: [batch,] , not one hot labels
-        # todo: set logits according to threshold values  (only set it to the large threshold if it is the ground truth)
-        # and only set it to the negative threshold if the prediction was incorrect
         if self.kill_gradients:
+            identity_matrix = torch.eye(teacher_logits.shape[1], dtype=torch.bool)  # [n_classes, n_classes]
+            ground_truth_mask = identity_matrix[ground_truth]  # [batch, n_classes]
+            wrong_pred_mask = torch.ones_like(teacher_logits, dtype=torch.bool) ^ ground_truth_mask  # XOR
             dis_sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * -1
             sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * self.sim_threshold
-            # set large similarities to the threshold
-            teacher_logits = torch.where(teacher_logits > self.sim_threshold, sim_setter, teacher_logits)
-            # set small similarities to -1
-            teacher_logits = torch.where(teacher_logits < self.dis_sim_threshold, dis_sim_setter, teacher_logits)
+            # set large similarities to the threshold if they are correct predictions
+            teacher_logits[ground_truth_mask] = torch.where(teacher_logits[ground_truth_mask] > self.sim_threshold,
+                                                            sim_setter, teacher_logits[ground_truth_mask])
+            # set small similarities to -1 if they are incorrect predictions
+            teacher_logits[wrong_pred_mask] = torch.where(teacher_logits[wrong_pred_mask] < self.dis_sim_threshold,
+                                                          dis_sim_setter, teacher_logits[wrong_pred_mask])
 
         loss = self.loss_fn(input=teacher_logits * self.temperature, target=ground_truth)
         
