@@ -98,17 +98,18 @@ def check_args(args):
 #  Adjust_learning_rate & get_learning_rate  
 #----------------------------------------------------
 def adjust_learning_rate(optimizer, epoch, args):
-    # add a warm-up period for maybe 10 epochs where we linearly increase the learning rate until we are at the
-    # cosine annealing starting point
-    # we will linearly increase from 0.002 to 0.2
+    warmup_length = 9
     if args.cosine_schedule:
         if epoch == 0:
-
-        # in the first 10 epichs, we have a linear increase to the starting learning rate
-        # calculate the factor from previous epoch
-        factor_previous = 0.5 * (1.0 + np.cos(np.pi * ((epoch - 1)/args.end_epoch)))
-        factor_now = 0.5 * (1.0 + np.cos(np.pi * (epoch/args.end_epoch)))
-        mult_factor = factor_now/factor_previous
+            mult_factor = 0.01
+        elif epoch <= warmup_length:
+            # we will exponentially increase from 0.002 to 0.2 in the warmup-period
+            mult_factor = np.power(100, 1/warmup_length)
+        else:  # epoch > warmup_length
+            # calculate the factor from previous epoch
+            factor_previous = 0.5 * (1.0 + np.cos(np.pi * ((epoch - warmup_length - 1)/(args.end_epoch - warmup_length))))
+            factor_now = 0.5 * (1.0 + np.cos(np.pi * ((epoch - warmup_length)/(args.end_epoch - warmup_length))))
+            mult_factor = factor_now/factor_previous
     else:
         mult_factor = 1.
         for milestone in args.lr_decay_schedule:
