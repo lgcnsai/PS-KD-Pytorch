@@ -44,7 +44,7 @@ class TeacherLoss(nn.Module):
         # Teacher_logits: [batch, n_classes]
         # ground_truth: [batch,] , not one hot labels
         if self.kill_gradients:
-            identity_matrix = torch.eye(teacher_logits.shape[1], dtype=torch.bool)  # [n_classes, n_classes]
+            identity_matrix = torch.eye(teacher_logits.shape[1], dtype=torch.bool, device=teacher_logits.device)  # [n_classes, n_classes]
             ground_truth_mask = identity_matrix[ground_truth]  # [batch, n_classes]
             wrong_pred_mask = torch.ones_like(teacher_logits, dtype=torch.bool) ^ ground_truth_mask  # XOR
             dis_sim_setter = torch.ones((), device=teacher_logits.device, dtype=teacher_logits.dtype) * -1
