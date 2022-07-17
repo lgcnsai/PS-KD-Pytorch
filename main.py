@@ -76,6 +76,8 @@ def parse_args():
     parser.add_argument('--kill_similar_gradients', action='store_true',
                         help='kill gradients in teacher loss if the predictions are too similar and/or too dissimilar')
     parser.add_argument('--resume', type=str, default=None, help='load model path')
+    parser.add_argument('--use_prior', action='store_true', help='use prior knowledge of superclasses')
+    
     args = parser.parse_args()
     return check_args(args)
 
@@ -114,7 +116,7 @@ def adjust_learning_rate(optimizer, epoch, args):
         mult_factor = 1.
         for milestone in args.lr_decay_schedule:
             if epoch == milestone:
-                mult_factor = args.lr_decay_rate
+                mult_factor *= args.lr_decay_rate
                 break
 
     for param_group in optimizer.param_groups:
@@ -366,6 +368,10 @@ def train(all_predictions,
 
         loss = loss_student + loss_teacher
 
+        if args.use_prior:
+            prior_loss = net.prior_loss(args.data_type)
+            loss += prior_loss
+        
         train_losses.update(loss.item(), inputs.size(0))
         err1, err5 = accuracy(student_logits.data, targets, topk=(1, 5))
         train_top1.update(err1.item(), inputs.size(0))

@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import numpy as np
 
 __all__ = ['ResNet', 'CIFAR_ResNet', 'CIFAR_ResNet101_Bottle', 'CIFAR_ResNet18_preActBasic',
            'CIFAR_ResNet18_preActSmall']
@@ -266,6 +267,57 @@ class CIFAR_ResNet(nn.Module):
         out4 = out.view(out.size(0), -1)
         return out4
 
+
+    def prior_loss(self, data_type):
+        
+        if data_type == 'cifar100':
+                   
+            coarse_labels = np.array([  4,  1, 14,  8,  0,  6,  7,  7, 18,  3,  
+                                        3, 14,  9, 18,  7, 11,  3,  9,  7, 11,
+                                        6, 11,  5, 10,  7,  6, 13, 15,  3, 15,  
+                                        0, 11,  1, 10, 12, 14, 16,  9, 11,  5, 
+                                        5, 19,  8,  8, 15, 13, 14, 17, 18, 10, 
+                                        16, 4, 17,  4,  2,  0, 17,  4, 18, 17, 
+                                        10, 3,  2, 12, 12, 16, 12,  1,  9, 19,  
+                                        2, 10,  0,  1, 16, 12,  9, 13, 15, 13, 
+                                        16, 19,  2,  4,  6, 19,  5,  5,  8, 19, 
+                                        18,  1,  2, 15,  6,  0, 17,  8, 14, 13  ])
+            seq = np.arange(100)
+            sup_cls = {} 
+            
+            for sup_cls_index in range(20):
+                sup_cls[sup_cls_index] = seq[(coarse_labels == sup_cls_index)]
+
+            vec = self.learnable_params.weight # [num_classes, 512]
+            sup_cls_prototypes = {}
+
+            #each class vec should be closer to the respective super class prototype vector
+            
+            for sup_cls_index in range(20):
+                within_class_vec = vec[torch.from_numpy(sup_cls[sup_cls_index])]  
+                prototype =  torch.mean(within_class_vec,dim=0)
+                sup_cls_prototypes[sup_cls_index] = prototype
+            
+
+            eps = 1e-9
+            loss = 0 
+            for cls_index in range(100):
+                sup_cls_index = coarse_labels[cls_index]
+                p_i = vec[cls_index]
+                num = torch.exp(torch.dot(sup_cls_prototypes[sup_cls_index],p_i))
+                den = 0
+                for j in range(20):
+                    den += torch.exp(torch.dot(sup_cls_prototypes[j],p_i))
+                prob = num/(den+eps)
+                loss += -torch.log(prob)
+            loss /= 100.0
+            
+            return loss
+
+
+        else:
+
+            return 0
 
 def CIFAR_ResNet18_preActSmall(**kwargs):
     return CIFAR_ResNet(PreActBlock, [1, 1, 1, 1], **kwargs)
