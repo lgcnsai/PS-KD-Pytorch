@@ -171,8 +171,9 @@ def accuracy(output, target, topk=(1,)):
 C = Colorer.instance()
 
 
-def main():
-    args = parse_args()
+def main(args=None):
+    if args is not None:
+        args = parse_args()
     #----------------------------------------------------
     #  Prompt color print
     #----------------------------------------------------
@@ -193,11 +194,12 @@ def main():
     #  Save Configuration to config_dir
     #----------------------------------------------------
     paser_config_save(args, config_dir)    
-    main_worker(0, None, model_dir, log_dir, args)
+    highest_acc = main_worker(0, None, model_dir, log_dir, args)
     print(C.green("[!] All Single GPU Training Done"))
     print(C.underline(C.red2('[Info] Save Model dir:')), C.red2(model_dir))
     print(C.underline(C.red2('[Info] Log dir:')), C.red2(log_dir))
     print(C.underline(C.red2('[Info] Config dir:')), C.red2(config_dir))
+    return highest_acc
         
 
 def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
@@ -300,6 +302,7 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
             
         if args.saveckp_freq and (epoch+1) % args.saveckp_freq == 0:
             save_on_master(save_dict,os.path.join(model_dir, f'checkpoint_{epoch:03}.pth'))
+    return best_acc
             
 
 
