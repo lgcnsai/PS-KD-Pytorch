@@ -14,8 +14,8 @@ class MyWorker(Worker):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.default_dict = {"lr": 0.2, "weight_decay": 5e-4, "start_epoch": 0, "end_epoch": 300, "batch_size": 256,
-                             "experiments_dir": "models", "classifier_type": "SmallResNet", "data_path": None,
-                             "data_type": None, "alpha_T": 0.8, "cosine_schedule": True, "saveckp_freq": 300,
+                             "experiments_dir": "models", "classifier_type": "SmallResNet", "data_path": 'data',
+                             "data_type": 'cifar100', "alpha_T": 0.8, "cosine_schedule": True, "saveckp_freq": 300,
                              "workers": 40, "custom_transform": False, "use_teacher_loss": True,
                              "use_student_loss": True, "temperature": 1.0, "kill_similar_gradients": False,
                              "use_prior": False, "sim_threshold": 1.0, "dis_sim_threshold": 1.0,

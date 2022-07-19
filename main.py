@@ -178,7 +178,7 @@ C = Colorer.instance()
 
 
 def main(args=None):
-    if args is not None:
+    if args is None:
         args = parse_args()
     #----------------------------------------------------
     #  Prompt color print
