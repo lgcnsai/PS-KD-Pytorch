@@ -5,7 +5,7 @@ import ConfigSpace as CS
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformIntegerHyperparameter
 from hpbandster.core.worker import Worker
 import hpbandster.core.nameserver as hpns
-from hpbandster.optimizers import BOHB as BOHB
+from hpbandster.optimizers import RandomSearch as RS
 
 from main import main
 
@@ -50,9 +50,10 @@ NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None)
 NS.start()
 w = MyWorker(nameserver='127.0.0.1', run_id='example1')
 w.run(background=True)
-bohb = BOHB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=33, max_budget=300)
-res = bohb.run(n_iterations=5)
-bohb.shutdown(shutdown_workers=True)
+random_search = RS(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=1,
+                   max_budget=30)
+res = random_search.run(n_iterations=1)
+random_search.shutdown(shutdown_workers=True)
 NS.shutdown()
 # get the "dict" that translates config ids to the actual configuration
 id2conf = res.get_id2config_mapping()
