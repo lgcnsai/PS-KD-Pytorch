@@ -19,7 +19,7 @@ class MyWorker(Worker):
                              "workers": 40, "custom_transform": False, "use_teacher_loss": True,
                              "use_student_loss": True, "temperature": 1.0, "kill_similar_gradients": False,
                              "use_prior": False, "sim_threshold": 1.0, "dis_sim_threshold": 1.0,
-                             "teacher_lr": 0.2, "teacher_weight_decay": 1e-6}
+                             "teacher_lr": 0.2, "teacher_weight_decay": 1e-6, "resume": None}
 
     def compute(self, config, budget, **kwargs):
         for key, value in self.default_dict.items():
