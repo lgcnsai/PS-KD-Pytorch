@@ -5,7 +5,7 @@ import ConfigSpace as CS
 from ConfigSpace.hyperparameters import UniformFloatHyperparameter, UniformIntegerHyperparameter
 from hpbandster.core.worker import Worker
 import hpbandster.core.nameserver as hpns
-from hpbandster.optimizers import RandomSearch as RS
+from hpbandster.optimizers import HyperBand as HB
 
 from main import main
 
@@ -37,9 +37,9 @@ class MyWorker(Worker):
     def get_configspace():
         config_space = CS.ConfigurationSpace()
         learning_rate_student = UniformFloatHyperparameter('lr', 0.2, 0.3, log=True)
-        weight_decay_student = UniformFloatHyperparameter('weight_decay', 5e-6, 5e-2, log=True)
+        weight_decay_student = UniformFloatHyperparameter('weight_decay', 5e-5, 5e-3, log=True)
         learning_rate_teacher = UniformFloatHyperparameter('teacher_lr', 0.2, 0.3, log=True)
-        weight_decay_teacher = UniformFloatHyperparameter('teacher_weight_decay', 5e-6, 5e-2, log=True)
+        weight_decay_teacher = UniformFloatHyperparameter('teacher_weight_decay', 1e-7, 1e-4, log=True)
         temperature = UniformFloatHyperparameter('temperature', 0.5, 16, log=True)
         config_space.add_hyperparameters([learning_rate_student, weight_decay_student,
                                           learning_rate_teacher, weight_decay_teacher, temperature])
@@ -50,8 +50,8 @@ NS = hpns.NameServer(run_id='example1', host='127.0.0.1', port=None)
 NS.start()
 w = MyWorker(nameserver='127.0.0.1', run_id='example1')
 w.run(background=True)
-random_search = RS(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=1,
-                   max_budget=30)
+random_search = HB(configspace=w.get_configspace(), run_id='example1', nameserver='127.0.0.1', min_budget=33,
+                   max_budget=300)
 res = random_search.run(n_iterations=1)
 random_search.shutdown(shutdown_workers=True)
 NS.shutdown()
