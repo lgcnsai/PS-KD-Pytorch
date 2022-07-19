@@ -30,12 +30,12 @@ class StudentLoss(nn.Module):
 
 
 class TeacherLoss(nn.Module):
-    def __init__(self, temperature=1.0, kill_gradients=False):
+    def __init__(self, temperature=1.0, sim_threshold=0.9, dis_sim_threshold=0.2, kill_gradients=False):
         super(TeacherLoss, self).__init__()
         self.temperature = temperature
         self.kill_gradients = kill_gradients
-        self.sim_threshold = 0.9  # 0.8 to 0.9, we can also grid-search here
-        self.dis_sim_threshold = 0.2  # don't set negative threshold to -0.9, set it larger
+        self.sim_threshold = sim_threshold  # 0.8 to 0.9, we can also grid-search here
+        self.dis_sim_threshold = dis_sim_threshold  # don't set negative threshold to -0.9, set it larger
         # "the cosine should have a positive value like 0.3 or something like that" somewhere between 0.3 and 0.1
         #  -> grid-search
         self.loss_fn = torch.nn.CrossEntropyLoss(reduction='none').cuda()

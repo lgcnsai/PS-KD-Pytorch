@@ -50,10 +50,10 @@ import numpy as np
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Online self-KD with soft labels')
-    parser.add_argument('--lr', default=0.2, type=float, help='initial learning rate')
+    parser.add_argument('--lr', default=0.2, type=float, help='initial learning rate for student head and backbone')
     parser.add_argument('--lr_decay_rate', default=0.1, type=float, help='learning rate decay rate')
     parser.add_argument('--lr_decay_schedule', default=[150, 225], nargs='*', type=int, help='when to drop lr')
-    parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight_decay')
+    parser.add_argument('--weight_decay', default=5e-4, type=float, help='weight_decay for student head and backbone')
     parser.add_argument('--start_epoch', default=0, type=int, help='manual epoch number')
     parser.add_argument('--end_epoch', default=300, type=int, help='number of training epoch to run')
     parser.add_argument('--batch_size', type=int, default=256, help='mini-batch size (default: 128), this is the total'
@@ -77,6 +77,12 @@ def parse_args():
                         help='kill gradients in teacher loss if the predictions are too similar and/or too dissimilar')
     parser.add_argument('--resume', type=str, default=None, help='load model path')
     parser.add_argument('--use_prior', action='store_true', help='use prior knowledge of superclasses')
+    parser.add_argument('--sim_threshold', default=1.0, type=float, help='similarity threshold for teacher loss')
+    parser.add_argument('--dis_sim_threshold', default=1.0, type=float, help='dissimilarity threshold for teacher loss')
+    parser.add_argument('--teacher_lr', default=0.2, type=float,
+                        help='learning rate for teacher head and learnable parameters')
+    parser.add_argument('--teacher_weight_decay', default=1e-6, type=float,
+                        help='weight decay for teacher head and learnable parameters')
     
     args = parser.parse_args()
     return check_args(args)
@@ -224,7 +230,9 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
     #if args.supervised_contrastive:
     criterion_CE = nn.CrossEntropyLoss().cuda(args.gpu)
     criterion_student = StudentLoss(temperature=args.temperature).cuda(args.gpu)
-    criterion_teacher = TeacherLoss(temperature=args.temperature, kill_gradients=args.kill_similar_gradients).cuda(args.gpu)
+    criterion_teacher = TeacherLoss(temperature=args.temperature, sim_threshold=args.sim_threshold,
+                                    dis_sim_threshold=args.dis_sim_threshold,
+                                    kill_gradients=args.kill_similar_gradients).cuda(args.gpu)
     #else:
     #    criterion_student = None
     #    criterion_teacher = None
@@ -237,8 +245,8 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         {'params': net.layer3.parameters()},
         {'params': net.layer4.parameters()},
         {'params': net.student_head.parameters()},
-        {'params': net.teacher_head.parameters(), 'weight_decay': 1e-6},  # for 256, set it to 0.2 to 0.25
-        {'params': net.learnable_params.parameters(), 'weight_decay': 1e-6}
+        {'params': net.teacher_head.parameters(), "lr": args.teacher_lr, 'weight_decay': args.teacher_weight_decay},
+        {'params': net.learnable_params.parameters(), "lr": args.teacher_lr, 'weight_decay': args.teacher_weight_decay}
     ],
         lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
     #optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay,
