@@ -8,6 +8,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
+from loader import custom_dataloader
 
 #--------------
 #  Datalodader
@@ -42,9 +43,10 @@ import json
 
 def parse_args():
     parser = argparse.ArgumentParser(description='visualizer for class prototype vectors')
-    parser.add_argument('--experiment_dir', type=str, default='expts',help='Directory name where the model ckpts are stored')
+    parser.add_argument('--experiment_dir', type=str, default='expts',
+                        help='Directory name where the model ckpts are stored')
     args = parser.parse_args()
-    return parser,args
+    return parser, args
 
 #----------------------------------------------------
 #  Colour print 
@@ -58,7 +60,7 @@ def main():
     assert os.path.exists(config_file), "config file path incorrect"
     assert os.path.exists(model_dir), "model directory path incorrect"
     
-    config_dict = json.load(open(config_file,'r'))
+    config_dict = json.load(open(config_file, 'r'))
     t_args = argparse.Namespace()
     t_args.__dict__.update(config_dict)
     config_args = parser.parse_args(namespace=t_args)
@@ -68,21 +70,35 @@ def main():
     start_epoch = config_args.start_epoch
     end_epoch = config_args.end_epoch
     saveckp_freq = config_args.saveckp_freq
-    
+    train_loader, valid_loader, train_sampler = custom_dataloader.dataloader(config_args)
     sim_matrices = []
+    learnable_parameters = []
+    teacher_before_learnable = []
     
     for epoch in range(start_epoch, end_epoch):
-        if (epoch+1) % saveckp_freq !=0 :
+        if (epoch+1) % saveckp_freq != 0:
             continue
-        checkpoint = torch.load(os.path.join(model_dir,'checkpoint_'+str(epoch)+'.pth'))  
+        inputs, targets, input_indices = next(iter(train_loader))
+        inputs = inputs.cuda(config_args.gpu, non_blocking=True)
+        targets = targets.cuda(config_args.gpu, non_blocking=True)
+        checkpoint = torch.load(os.path.join(model_dir, 'checkpoint_'+str(epoch)+'.pth'))
         net.load_state_dict(checkpoint['net'])
-        learnable_params = net.learnable_params.weight.data # tensor of shape = [num_classes, 512]
-        learnable_params = learnable_params.clone().detach().cpu().numpy() # nparray of shape = [num_classes, 512]
+        learnable_params = net.learnable_params.weight.data  # tensor of shape = [num_classes, 512]
+        learnable_params = learnable_params.clone().detach().cpu().numpy()  # nparray of shape = [num_classes, 512]
+        learnable_parameters.append(learnable_params)
         similarity_matrix = learnable_params @ learnable_params.T
         sim_matrices.append(similarity_matrix)
+        embedding = net(inputs)
+        detached_embedding = embedding.clone().detach()
+        teacher_output_before_learnable = F.normalize(net.teacher_head(detached_embedding))
+        teacher_before_learnable.append(teacher_output_before_learnable.detach().cpu().numpy())
     
     sim_matrices = np.array(sim_matrices)
-    np.save(open(os.path.join(model_dir,'learnable_parameters_similarity.npy'),'wb'),sim_matrices)
+    learnable_parameters = np.array(learnable_parameters)
+    teacher_before_learnable = np.array(teacher_before_learnable)
+    np.save(open(os.path.join(model_dir, 'learnable_parameters_similarity.npy'), 'wb'), sim_matrices)
+    np.save(open(os.path.join(model_dir, 'learnable_parameters.npy'), 'wb'), learnable_parameters)
+    np.save(open(os.path.join(model_dir, 'teacher_output_before_learnable'), 'wb'), teacher_before_learnable)
 
 if __name__ == '__main__':
     main()
