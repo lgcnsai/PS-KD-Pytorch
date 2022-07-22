@@ -74,6 +74,8 @@ def main():
     sim_matrices = []
     learnable_parameters = []
     teacher_before_learnable = []
+    embeddings = []
+    teacher_after_learnable = []
     
     for epoch in range(start_epoch, end_epoch):
         if (epoch+1) % saveckp_freq != 0:
@@ -81,7 +83,7 @@ def main():
         inputs, targets, input_indices = next(iter(train_loader))
         inputs = inputs.cuda(config_args.gpu, non_blocking=True)
         targets = targets.cuda(config_args.gpu, non_blocking=True)
-        checkpoint = torch.load(os.path.join(model_dir, 'checkpoint_'+str(epoch)+'.pth'))
+        checkpoint = torch.load(os.path.join(model_dir, f'checkpoint_{epoch:03d}.pth'))
         net.load_state_dict(checkpoint['net'])
         learnable_params = net.learnable_params.weight.data  # tensor of shape = [num_classes, 512]
         learnable_params = learnable_params.clone().detach().cpu().numpy()  # nparray of shape = [num_classes, 512]
@@ -90,15 +92,21 @@ def main():
         sim_matrices.append(similarity_matrix)
         embedding = net(inputs)
         detached_embedding = embedding.clone().detach()
+        embeddings.append(detached_embedding.cpu().numpy())
         teacher_output_before_learnable = F.normalize(net.teacher_head(detached_embedding))
-        teacher_before_learnable.append(teacher_output_before_learnable.detach().cpu().numpy())
+        teacher_before_learnable.append(teacher_output_before_learnable.clone().detach().cpu().numpy())
+        teacher_after_learnable.append(net.learnable_params(teacher_output_before_learnable).clone().detach().cpu().numpy())
     
     sim_matrices = np.array(sim_matrices)
     learnable_parameters = np.array(learnable_parameters)
     teacher_before_learnable = np.array(teacher_before_learnable)
+    embeddings = np.array(embeddings)
+    teacher_after_learnable = np.array(teacher_after_learnable)
+    np.save(open(os.path.join(model_dir, 'teacher_logits.npy'), 'wb'), teacher_after_learnable)
+    np.save(open(os.path.join(model_dir, 'embeddings.npy'), 'wb'), embeddings)
     np.save(open(os.path.join(model_dir, 'learnable_parameters_similarity.npy'), 'wb'), sim_matrices)
     np.save(open(os.path.join(model_dir, 'learnable_parameters.npy'), 'wb'), learnable_parameters)
-    np.save(open(os.path.join(model_dir, 'teacher_output_before_learnable'), 'wb'), teacher_before_learnable)
+    np.save(open(os.path.join(model_dir, 'teacher_output_before_learnable.npy'), 'wb'), teacher_before_learnable)
 
 if __name__ == '__main__':
     main()
