@@ -64,6 +64,7 @@ def main():
         # teacher_before_learnable @ learnable.T = teacher_logits  # <- somehow not true
         x = teacher_output_before_learnable @ learnable_parameters.T
         z = teacher_logits
+        np.testing.assert_allclose(x, z, rtol=1e-9), "The arrays are not equal"
         print('-------------------------------')
 
 
