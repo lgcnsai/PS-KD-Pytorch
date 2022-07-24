@@ -67,6 +67,7 @@ def main():
     config_args.gpu = 0
     net = get_network(config_args)
     net = net.cuda()
+    net.eval()
     start_epoch = config_args.start_epoch
     end_epoch = config_args.end_epoch
     saveckp_freq = config_args.saveckp_freq
