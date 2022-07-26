@@ -246,7 +246,8 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
         {'params': net.layer4.parameters()},
         {'params': net.student_head.parameters()},
         {'params': net.teacher_head.parameters(), "lr": args.teacher_lr, 'weight_decay': args.teacher_weight_decay},
-        {'params': net.learnable_params.parameters(), "lr": args.teacher_lr, 'weight_decay': args.teacher_weight_decay}
+        {'params': net.learnable_params.parameters(), "lr": args.teacher_lr, 'weight_decay': 0.0}
+        # exclude learnable parameters from weight decay
     ],
         lr=args.lr, momentum=0.9, weight_decay=args.weight_decay, nesterov=True)
     #optimizer = torch.optim.SGD(net.parameters(), lr=args.lr, momentum=0.9, weight_decay=args.weight_decay,
