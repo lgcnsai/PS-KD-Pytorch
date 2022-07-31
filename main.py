@@ -121,9 +121,9 @@ def adjust_learning_rate(optimizer, epoch, args):
     else:
         mult_factor = 1.
         for milestone in args.lr_decay_schedule:
-            if epoch == milestone:
+            if epoch >= milestone:
                 mult_factor *= args.lr_decay_rate
-                break
+            
 
     for param_group in optimizer.param_groups:
         param_group['lr'] *= mult_factor
