@@ -307,9 +307,10 @@ def main_worker(gpu, ngpus_per_node, model_dir, log_dir, args):
 
         if acc > best_acc:
             best_acc = acc
-            save_on_master(save_dict,os.path.join(model_dir, 'checkpoint_best.pth'))
+            #save_on_master(save_dict,os.path.join(model_dir, 'checkpoint_best.pth'))
             
-        if args.saveckp_freq and (epoch+1) % args.saveckp_freq == 0:
+        #if args.saveckp_freq and (epoch+1) % args.saveckp_freq == 0:
+        if epoch==1 or epoch==10 or epoch==50 or (epoch+1)%args.saveckp_freq == 0:
             save_on_master(save_dict,os.path.join(model_dir, f'checkpoint_{epoch:03}.pth'))
     return best_acc
             
